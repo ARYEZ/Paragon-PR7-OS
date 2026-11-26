@@ -1,0 +1,60 @@
+# Paragon PR7-OS boot splash: "PARAGON", the PR7-OS mark, a progress line in the family gradient.
+Window.SetBackgroundTopColor(0.024, 0.016, 0.027);
+Window.SetBackgroundBottomColor(0.024, 0.016, 0.027);
+
+cx = Window.GetX() + Window.GetWidth() / 2;
+cy = Window.GetY() + Window.GetHeight() / 2;
+
+mark_image = Image("mark.png");
+mark = Sprite(mark_image);
+mark.SetPosition(cx - mark_image.GetWidth() / 2, cy - mark_image.GetHeight() / 2 - 30, 1);
+
+word_image = Image("word.png");
+word = Sprite(word_image);
+word.SetPosition(cx - word_image.GetWidth() / 2, cy - mark_image.GetHeight() / 2 - 30 - word_image.GetHeight() - 10, 1);
+
+track_image = Image("track.png");
+track = Sprite(track_image);
+track_y = cy + mark_image.GetHeight() / 2 + 20;
+track.SetPosition(cx - track_image.GetWidth() / 2, track_y, 1);
+
+fill_image = Image("fill.png");
+fill = Sprite();
+fill.SetPosition(cx - track_image.GetWidth() / 2, track_y, 2);
+
+footer_image = Image("footer.png");
+footer = Sprite(footer_image);
+footer.SetPosition(cx - footer_image.GetWidth() / 2, Window.GetY() + Window.GetHeight() - 70, 1);
+
+fun progress_callback(duration, progress) {
+    w = Math.Int(fill_image.GetWidth() * progress);
+    if (w < 2) w = 2;
+    fill.SetImage(fill_image.Scale(w, fill_image.GetHeight()));
+}
+Plymouth.SetBootProgressFunction(progress_callback);
+
+# An encrypted disk asks here: the question and one dot per character typed.
+prompt = Sprite();
+dots = Sprite();
+fun password_callback(text, bullets) {
+    prompt.SetImage(Image.Text(text, 0.91, 0.91, 0.92, 1, "Inter 14"));
+    prompt.SetPosition(cx - prompt.GetImage().GetWidth() / 2, track_y + 40, 3);
+    s = "";
+    for (i = 0; i < bullets; i++) s += "* ";
+    dots.SetImage(Image.Text(s, 1, 0.48, 0.1, 1, "Inter 18"));
+    dots.SetPosition(cx - dots.GetImage().GetWidth() / 2, track_y + 72, 3);
+}
+Plymouth.SetDisplayPasswordFunction(password_callback);
+
+fun normal_callback() {
+    prompt.SetImage(Image.Text("", 0, 0, 0, 0));
+    dots.SetImage(Image.Text("", 0, 0, 0, 0));
+}
+Plymouth.SetDisplayNormalFunction(normal_callback);
+
+message = Sprite();
+fun message_callback(text) {
+    message.SetImage(Image.Text(text, 0.54, 0.54, 0.57, 1, "Inter 12"));
+    message.SetPosition(cx - message.GetImage().GetWidth() / 2, track_y + 110, 3);
+}
+Plymouth.SetMessageFunction(message_callback);

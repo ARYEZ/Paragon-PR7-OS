@@ -1,0 +1,140 @@
+name: build
+
+on:
+  push:
+    branches: ["main"]
+    tags: ["v*"]
+  workflow_dispatch:
+    inputs:
+      release:
+        description: "Publish a release (tag v<version>) from this commit"
+        type: boolean
+        default: false
+
+env:
+  APPS: "e w l f r p m z db hx wm fs tm hb bk pm sm hw du"
+
+jobs:
+  test:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - name: The family's apps (their code goes into the image)
+        run: |
+          mkdir -p family
+          for a in $APPS; do
+            git clone -q --depth 1 "https://github.com/ARYEZ/Paragon-PR7-${a^^}" "family/paragon-pr7-$a"
+          done
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+      - name: Install
+        run: |
+          sudo apt-get update -q
+          sudo apt-get install -y -q libegl1 libgl1 libxkbcommon0 libxkbcommon-x11-0 libxcb-cursor0 libfontconfig1 grub-common
+          pip install -q pytest PySide6 PyQt6 PyQt6-QScintilla paramiko keyring pyte psutil pykeepass mutagen Pillow
+      - name: Tests (the generated theme files, the login screen, every app starting on Linux)
+        env:
+          PR7OS_FAMILY: ${{ github.workspace }}/family
+        run: python -m pytest -q
+
+  iso:
+    needs: test
+    runs-on: ubuntu-24.04
+    timeout-minutes: 180
+    permissions:
+      contents: write
+    steps:
+      - name: Room for the build (the runner's preinstalled SDKs out)
+        run: |
+          sudo rm -rf /usr/share/dotnet /usr/local/lib/android /opt/ghc /opt/hostedtoolcache/CodeQL /usr/local/share/boost
+          docker image prune -af > /dev/null
+          df -h /
+      - uses: actions/checkout@v4
+      - name: The family's apps
+        run: |
+          mkdir -p family
+          for a in $APPS; do
+            git clone -q --depth 1 "https://github.com/ARYEZ/Paragon-PR7-${a^^}" "family/paragon-pr7-$a"
+          done
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+      - name: The image's files (theme and apps)
+        run: |
+          sudo apt-get update -q
+          sudo apt-get install -y -q libegl1 libgl1 libxkbcommon0 libxcb-cursor0 libfontconfig1
+          pip install -q PySide6 Pillow
+          QT_QPA_PLATFORM=offscreen python -m pr7os.assets build/root
+          python -m pr7os.apps family build/root
+          echo "PR7OS_VERSION=$(python -c 'import pr7os; print(pr7os.__version__)')" >> "$GITHUB_ENV"
+      - name: Build the ISO (Debian's live-build, in Debian 13)
+        run: docker run --rm --privileged -v "$PWD:/work" debian:trixie bash /work/live/build.sh
+      - name: The ISO
+        run: |
+          iso=$(ls live/*.iso | head -1)
+          sudo chown "$USER" "$iso"
+          mv "$iso" "PR7-OS-$PR7OS_VERSION-amd64.iso"
+          echo "ISO=PR7-OS-$PR7OS_VERSION-amd64.iso" >> "$GITHUB_ENV"
+          ls -la PR7-OS-*.iso
+          sha256sum PR7-OS-*.iso > "PR7-OS-$PR7OS_VERSION-amd64.iso.sha256"
+          tail -n 30 live/build.log || true
+      - name: Boot it (QEMU with KVM) and take screenshots
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules && sudo udevadm trigger --name-match=kvm
+          sudo apt-get install -y -q qemu-system-x86 ovmf xorriso
+          python tools/boot_test.py "$ISO" shots
+      - name: Screenshots to the ci-boot-screens branch (written only by CI)
+        if: always()
+        run: |
+          mkdir -p shots && cd shots
+          cp ../live/build.log build.log 2>/dev/null || true
+          echo "$GITHUB_SHA" > commit.txt
+          git init -q && git checkout -q -b ci-boot-screens
+          git add -A
+          git -c user.name="PR7-OS CI" -c user.email="ci@users.noreply.github.com" commit -qm "Boot test of ${GITHUB_SHA::7}"
+          git push -qf "https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}" ci-boot-screens
+      - name: Is this version released yet? (pushing a new version publishes it; 0.0.x never does)
+        if: github.event_name == 'push' && !startsWith(github.ref, 'refs/tags/')
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          case "$PR7OS_VERSION" in 0.0.*) echo "$PR7OS_VERSION is a development build: nothing to publish."; exit 0;; esac
+          if gh release view "v$PR7OS_VERSION" --repo "${{ github.repository }}" > /dev/null 2>&1; then
+            echo "v$PR7OS_VERSION is already released."
+          else
+            echo "v$PR7OS_VERSION has no release yet: publishing it."; echo "AUTO_RELEASE=1" >> "$GITHUB_ENV"
+          fi
+      - name: Release notes and the download (a GitHub release file holds at most 2 GB)
+        if: startsWith(github.ref, 'refs/tags/v') || (github.event_name == 'workflow_dispatch' && inputs.release) || env.AUTO_RELEASE == '1'
+        run: |
+          python - <<'PY'
+          import os, re
+          v = os.environ["PR7OS_VERSION"]
+          text = open("CHANGELOG.md", encoding="utf-8").read()
+          m = re.search(r"^## " + re.escape(v) + r"\s*$(.*?)(?=^## |\Z)", text, re.M | re.S)
+          open("release-notes.md", "w", encoding="utf-8").write((m.group(1).strip() if m else "Paragon PR7-OS " + v) + "\n")
+          PY
+          size=$(stat -c %s "$ISO")
+          if [ "$size" -ge 2000000000 ]; then
+            split -b 1900M -d -a 1 "$ISO" "$ISO.part"
+            rm "$ISO"
+            printf '\nThe ISO comes in parts (GitHub release files stop at 2 GB). Join them before writing to a USB stick:\n\n    cat %s.part* > %s        (Windows: copy /b %s.part0+%s.part1 %s)\n\nthen check it with the .sha256 file.\n' "$ISO" "$ISO" "$ISO" "$ISO" "$ISO" >> release-notes.md
+          fi
+          ls -la PR7-OS-*
+      - name: Release
+        if: startsWith(github.ref, 'refs/tags/v') || (github.event_name == 'workflow_dispatch' && inputs.release) || env.AUTO_RELEASE == '1'
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ startsWith(github.ref, 'refs/tags/v') && github.ref_name || format('v{0}', env.PR7OS_VERSION) }}
+          target_commitish: ${{ github.sha }}
+          body_path: release-notes.md
+          files: |
+            PR7-OS-*.iso
+            PR7-OS-*.iso.part*
+            PR7-OS-*.iso.sha256
+            shots/desktop.png
+            shots/login.png
+            shots/boot_menu.png
+          name: Paragon PR7-OS v${{ env.PR7OS_VERSION }}

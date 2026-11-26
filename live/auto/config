@@ -1,0 +1,26 @@
+#!/bin/sh
+# Paragon PR7-OS: Debian 13 (trixie) with KDE Plasma, as a hybrid ISO (USB stick or DVD, UEFI and BIOS).
+set -e
+lb config noauto \
+    --distribution trixie \
+    --architectures amd64 \
+    --archive-areas "main contrib non-free non-free-firmware" \
+    --mirror-bootstrap "http://deb.debian.org/debian/" \
+    --mirror-binary "http://deb.debian.org/debian/" \
+    --security true \
+    --updates true \
+    --debian-installer none \
+    --binary-images iso-hybrid \
+    --apt-recommends true \
+    --firmware-chroot false \
+    --firmware-binary false \
+    --memtest none \
+    --cache-packages false \
+    --checksums sha256 \
+    --chroot-squashfs-compression-type xz \
+    --image-name paragon-pr7-os \
+    --iso-application "Paragon PR7-OS" \
+    --iso-publisher "Paragon" \
+    --iso-volume "PR7-OS" \
+    --bootappend-live "boot=live components quiet splash username=paragon user-fullname=Paragon hostname=pr7os locales=en_US.UTF-8 keyboard-layouts=us" \
+    "${@}"

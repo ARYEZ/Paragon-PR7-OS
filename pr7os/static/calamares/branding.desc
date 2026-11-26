@@ -1,0 +1,36 @@
+---
+# Paragon PR7-OS: the installer (Calamares) in the family look
+componentName: paragon
+welcomeStyleCalamares: false
+welcomeExpandingLogo: true
+windowExpanding: normal
+windowSize: 960px,640px
+windowPlacement: center
+sidebar: widget
+navigation: widget
+
+strings:
+    productName:         "Paragon PR7-OS"
+    shortProductName:    "PR7-OS"
+    version:             "@VERSION@"
+    shortVersion:        "@VERSION@"
+    versionedName:       "Paragon PR7-OS @VERSION@"
+    shortVersionedName:  "PR7-OS @VERSION@"
+    bootloaderEntryName: "Paragon"
+    productUrl:          "https://github.com/ARYEZ/Paragon-PR7-OS"
+    supportUrl:          "https://github.com/ARYEZ/Paragon-PR7-OS/issues"
+    releaseNotesUrl:     "https://github.com/ARYEZ/Paragon-PR7-OS/releases"
+
+images:
+    productLogo:         "logo.png"
+    productIcon:         "icon.png"
+    productWelcome:      "welcome.png"
+
+slideshow:               "show.qml"
+slideshowAPI:            2
+
+style:
+    SidebarBackground:        "#0C0A0D"
+    SidebarText:              "#E8E8EA"
+    SidebarTextCurrent:       "#FFFFFF"
+    SidebarBackgroundCurrent: "#E8303A"

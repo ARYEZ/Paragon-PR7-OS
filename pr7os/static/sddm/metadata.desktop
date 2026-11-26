@@ -1,0 +1,12 @@
+[SddmGreeterTheme]
+Name=Paragon PR7-OS
+Description=The Paragon PR7-OS login screen
+Author=Paragon
+Type=sddm-theme
+Version=1.0
+Screenshot=background.png
+MainScript=Main.qml
+ConfigFile=theme.conf
+Theme-Id=paragon
+Theme-API=2.0
+QtVersion=6

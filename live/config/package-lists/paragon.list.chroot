@@ -1,0 +1,54 @@
+# Paragon PR7-OS: what's installed (Debian 13 packages)
+
+# the desktop: Plasma, networks, sound, Bluetooth, screens, the portal for Flatpak / file dialogs
+kde-plasma-desktop
+plasma-nm
+plasma-pa
+powerdevil
+bluedevil
+kscreen
+kde-config-gtk-style
+breeze-gtk-theme
+xdg-desktop-portal-kde
+sddm
+pipewire-audio
+wireplumber
+network-manager
+firefox-esr
+
+# boot: the splash, and what the installer puts on the disk (UEFI with Secure Boot, and BIOS)
+plymouth
+grub-common
+grub-efi-amd64
+grub-efi-amd64-signed
+shim-signed
+efibootmgr
+grub-pc-bin
+amd64-microcode
+intel-microcode
+firmware-linux-free
+firmware-misc-nonfree
+firmware-iwlwifi
+firmware-realtek
+firmware-amd-graphics
+
+# the installer
+calamares
+calamares-settings-debian
+
+# what the Paragon apps need: Python, Qt's system libraries, 7-Zip (PR7-Z), HandBrakeCLI (PR7-HB), restic (PR7-BK)
+python3
+python3-venv
+libxcb-cursor0
+libegl1
+libgl1
+libxkbcommon-x11-0
+libfontconfig1
+7zip
+handbrake-cli
+restic
+fonts-dejavu-core
+
+# virtual machines
+spice-vdagent
+qemu-guest-agent

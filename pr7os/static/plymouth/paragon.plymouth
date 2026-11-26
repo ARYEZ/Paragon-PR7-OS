@@ -1,0 +1,8 @@
+[Plymouth Theme]
+Name=Paragon PR7-OS
+Description=The Paragon PR7-OS boot splash: the PR7-OS mark and the family gradient
+ModuleName=script
+
+[script]
+ImageDir=/usr/share/plymouth/themes/paragon
+ScriptFile=/usr/share/plymouth/themes/paragon/paragon.script

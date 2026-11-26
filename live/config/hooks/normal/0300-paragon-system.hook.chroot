@@ -1,0 +1,27 @@
+#!/bin/sh
+# The system's name (os-release), the installer's branding and launcher, the initramfs with the splash.
+set -e
+# os-release: Debian's file is diverted (base-files upgrades leave ours), the name and logo are Paragon's; ID stays
+# "debian" so every Debian tool still knows what it runs on.
+if ! dpkg-divert --list /usr/lib/os-release | grep -q paragon; then
+    dpkg-divert --package paragon --divert /usr/lib/os-release.debian --rename --add /usr/lib/os-release
+fi
+python3 - <<'PY'
+import re
+src = open("/usr/lib/os-release.debian").read()
+keep = {k: v for k, v in re.findall(r'^(\w+)=(.*)$', src, re.M)}
+keep.update({"NAME": '"Paragon PR7-OS"', "PRETTY_NAME": '"Paragon PR7-OS (based on Debian 13)"', "LOGO": "pr7os",
+             "HOME_URL": '"https://github.com/ARYEZ/Paragon-PR7-OS"',
+             "SUPPORT_URL": '"https://github.com/ARYEZ/Paragon-PR7-OS/issues"',
+             "BUG_REPORT_URL": '"https://github.com/ARYEZ/Paragon-PR7-OS/issues"'})
+open("/usr/lib/os-release", "w").write("".join(f"{k}={v}\n" for k, v in keep.items()))
+PY
+# the installer: our branding, and its launcher named for us
+if [ -f /etc/calamares/settings.conf ]; then
+    sed -i 's/^branding:.*/branding: paragon/' /etc/calamares/settings.conf
+fi
+for f in /usr/share/applications/install-debian.desktop /etc/skel/Desktop/install-debian.desktop; do
+    [ -f "$f" ] || continue
+    sed -i -e 's/^Name=.*/Name=Install Paragon PR7-OS/' -e '/^Name\[/d' -e 's/^Icon=.*/Icon=pr7os/' "$f"
+done
+update-initramfs -u -k all

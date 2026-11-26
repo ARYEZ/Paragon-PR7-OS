@@ -2,3 +2,24 @@ __pycache__/
 *.pyc
 build/
 *.iso
+# live-build's working folders and what CI generates
+live/chroot/
+live/binary/
+live/cache/
+live/.build/
+live/*.iso
+live/*.log
+live/*.contents
+live/*.files
+live/*.packages
+live/*.zsync
+live/*.sha256
+live/config/binary
+live/config/bootstrap
+live/config/chroot
+live/config/common
+live/config/source
+live/config/includes.chroot_after_packages/
+live/config/bootloaders/
+family/
+shots/

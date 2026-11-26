@@ -1,0 +1,17 @@
+#!/bin/sh
+# The Paragon apps' Python environment: one venv for all of them (/opt/paragon/requirements.txt is staged by
+# pr7os.apps). PySide6's parts come separately so its web engine (which no app uses) stays out.
+set -e
+python3 -m venv /opt/paragon/venv
+/opt/paragon/venv/bin/pip install --no-cache-dir --upgrade pip
+grep -v -i '^pyside6' /opt/paragon/requirements.txt > /tmp/paragon-req.txt
+pyside=$(grep -i '^pyside6' /opt/paragon/requirements.txt | sed 's/^[Pp]y[Ss]ide6//')
+/opt/paragon/venv/bin/pip install --no-cache-dir -r /tmp/paragon-req.txt \
+    "PySide6_Essentials${pyside}" "PySide6_Addons${pyside}" "PySide6_Pdf"
+rm -f /tmp/paragon-req.txt
+/opt/paragon/venv/bin/python -m compileall -q /opt/paragon/apps /opt/paragon/venv/lib
+# every app imports (a broken environment fails the build, not the user's first click)
+for app in /opt/paragon/apps/paragon-pr7-*; do
+    pkg=$(basename "$app" | sed 's/paragon-pr7-/pr7/')
+    PYTHONPATH="$app" /opt/paragon/venv/bin/python -c "import $pkg" || { echo "$pkg doesn't import"; exit 1; }
+done
