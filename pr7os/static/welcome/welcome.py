@@ -1,5 +1,7 @@
 """Paragon Welcome: what a new PR7-OS desktop needs, in one window (PySide6 from the apps' environment).
 
+    FONT        Bebas Neue (PR7-OS's) or Inter, for your account: Plasma's fonts (kwriteconfig6) and the Paragon apps
+                (their launcher reads ~/.config/paragon/font); the login screen and boot stay Bebas Neue (everyone's)
     FINISH      OBSIDIAN or AURORA: the family's choice (~/.config/paragon/family-finish); every Paragon app follows,
                 and finish_sync.py takes Plasma's global theme along
     KEYS        Print (PR7-Q), Alt+Space (PR7-LN), Ctrl+Alt+Space (PR7-IS)
@@ -26,7 +28,7 @@ from PySide6.QtWidgets import (QApplication, QCheckBox, QFrame, QGridLayout, QHB
 
 GRADIENT = "qlineargradient(x1:0, y1:0, x2:1, y2:0, stop:0 #FF0743, stop:0.5 #FA3632, stop:1 #F2781E)"
 STYLE = f"""
-QWidget {{ background: #0C0A0D; color: #E8E8EA; font-family: "Bebas Neue"; font-size: 16px; letter-spacing: 0.5px; }}
+QWidget {{ background: #0C0A0D; color: #E8E8EA; font-family: "@FONT@"; font-size: @SIZE@px; letter-spacing: 0.5px; }}
 QLabel#title {{ font-size: 15px; font-weight: 600; letter-spacing: 2px; color: #8A8A92; }}
 QLabel#heading {{ font-size: 25px; font-weight: 600; }}
 QLabel#label {{ font-size: 15px; font-weight: 600; letter-spacing: 2px; color: #B9B5B8; }}
@@ -51,6 +53,45 @@ def config_home() -> str:
 
 def family_file() -> str:
     return os.environ.get("PARAGON_FAMILY_FILE") or os.path.join(config_home(), "paragon", "family-finish")
+
+
+FONTS = {   # Plasma's font settings for each choice (Bebas Neue a size up: a tall, condensed face)
+    "bebas": {"font": "Bebas Neue,12,-1,5,400,0,0,0,0,0,0,0,0,0,0,1",
+              "small": "Bebas Neue,10,-1,5,400,0,0,0,0,0,0,0,0,0,0,1",
+              "title": "Bebas Neue,12,-1,5,400,0,0,0,0,0,0,0,0,0,0,1"},
+    "inter": {"font": "Inter,10,-1,5,400,0,0,0,0,0,0,0,0,0,0,1",
+              "small": "Inter,8,-1,5,400,0,0,0,0,0,0,0,0,0,0,1",
+              "title": "Inter,10,-1,5,600,0,0,0,0,0,0,0,0,0,0,1"},
+}
+
+
+def font_file() -> str:
+    return os.path.join(config_home(), "paragon", "font")
+
+
+def font() -> str:
+    try:
+        with open(font_file(), encoding="utf-8") as fh:
+            v = fh.read().strip().lower()
+    except OSError:
+        v = ""
+    return v if v in FONTS else "bebas"
+
+
+def font_commands(name: str) -> list[list[str]]:
+    """Plasma's own way to change your fonts (System Settings > Fonts writes the same keys)."""
+    f = FONTS[name]
+    out = []
+    for key, value in (("font", f["font"]), ("menuFont", f["font"]), ("toolBarFont", f["font"]),
+                       ("smallestReadableFont", f["small"])):
+        out.append(["kwriteconfig6", "--file", "kdeglobals", "--group", "General", "--key", key, value])
+    out.append(["kwriteconfig6", "--file", "kdeglobals", "--group", "WM", "--key", "activeFont", f["title"]])
+    return out
+
+
+def style() -> str:
+    return STYLE.replace("@FONT@", "Bebas Neue" if font() == "bebas" else "Inter").replace(
+        "@SIZE@", "16" if font() == "bebas" else "13")
 
 
 def settings_file() -> str:
@@ -124,7 +165,8 @@ class Window(QWidget):
         self.started: list[list[str]] = []
         self.proc: QProcess | None = None
         self.setWindowTitle("Welcome to PR7-OS")
-        self.setStyleSheet(STYLE)
+        self.setStyleSheet(style())
+        self.configure = lambda args: subprocess.run(args, capture_output=True)   # tests record instead
         self.setAttribute(Qt.WidgetAttribute.WA_DeleteOnClose)        # PR7-OS's updater window's lesson
         self.resize(720, 640)
         lay = QVBoxLayout(self)
@@ -146,6 +188,18 @@ class Window(QWidget):
             b.clicked.connect(lambda _=False, n=name: self.choose_finish(n))
             row.addWidget(b)
             self.finish_keys[name] = b
+        lay.addWidget(box)
+
+        box, row, self.font_text = card("FONT", "Bebas Neue (capitals only) or Inter, for your account and the Paragon "
+                                                "apps. Sign out and back in to see it everywhere.")
+        self.font_keys = {}
+        for name, label in (("bebas", "BEBAS NEUE"), ("inter", "INTER")):
+            b = QPushButton(label)
+            b.setCheckable(True)
+            b.setChecked(font() == name)
+            b.clicked.connect(lambda _=False, n=name: self.choose_font(n))
+            row.addWidget(b)
+            self.font_keys[name] = b
         lay.addWidget(box)
 
         keys = QFrame()
@@ -205,6 +259,18 @@ class Window(QWidget):
         set_finish(name)
         for n, b in self.finish_keys.items():
             b.setChecked(n == name)
+
+    def choose_font(self, name: str) -> None:
+        path = font_file()
+        os.makedirs(os.path.dirname(path), exist_ok=True)
+        with open(path, "w", encoding="utf-8") as fh:
+            fh.write(name)
+        for args in font_commands(name):
+            self.configure(args)
+        for n, b in self.font_keys.items():
+            b.setChecked(n == name)
+        self.font_text.setText("Saved: sign out and back in to see it everywhere.")
+        self.setStyleSheet(style())
 
     def show_ssh(self, note: str = "") -> None:
         host = socket.gethostname()

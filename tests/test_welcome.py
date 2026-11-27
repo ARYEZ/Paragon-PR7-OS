@@ -84,3 +84,39 @@ def test_the_ssh_helper(tmp_path):
     assert "systemctl disable --now ssh" in log.read_text()
     bad = subprocess.run([sys.executable, helper, "on", "--evil"], env=env, capture_output=True, text=True)
     assert bad.returncode == 2                                    # one word only
+
+
+def test_the_font_switch(welcome):
+    """FONT: your choice saved for the apps' launchers, and Plasma's own font keys written (System Settings > Fonts
+    writes the same) - recorded here, never run."""
+    mod, w, tmp = welcome
+    assert w.font_keys["bebas"].isChecked()                       # PR7-OS's font until you choose
+    written = []
+    w.configure = lambda args: written.append(args)
+    w.font_keys["inter"].click()
+    assert (tmp / "config/paragon/font").read_text() == "inter" and w.font_keys["inter"].isChecked()
+    keys = {(a[4], a[6]): a[7] for a in written}
+    assert keys[("General", "font")].startswith("Inter,10,") and keys[("WM", "activeFont")].startswith("Inter,10,")
+    assert keys[("General", "smallestReadableFont")].startswith("Inter,8,")
+    assert "Inter" in w.styleSheet() and "sign out" in w.font_text.text().lower()
+    written.clear()
+    w.font_keys["bebas"].click()
+    assert all(a[7].startswith("Bebas Neue,") for a in written) and len(written) == 5
+
+
+def test_the_launcher_follows_the_font_choice(tmp_path):
+    """The apps' launcher (run for real by sh): Bebas Neue's font configuration unless your choice says inter."""
+    import subprocess
+    from pr7os import apps
+    script = tmp_path / "pr7-e"
+    text = apps.launcher(apps.APPS[0]).replace('exec /opt/paragon/venv/bin/python -m pr7e "$@"',
+                                               'echo "FONTCONFIG=${FONTCONFIG_FILE:-none}"')
+    script.write_text(text)
+    env = {"PATH": "/usr/bin:/bin", "HOME": str(tmp_path), "XDG_CONFIG_HOME": str(tmp_path / "cfg")}
+    run = lambda: subprocess.run(["sh", str(script)], env=env, capture_output=True, text=True).stdout.strip()
+    assert run() == "FONTCONFIG=/etc/paragon/fonts-apps.conf"      # nothing chosen: Bebas Neue
+    (tmp_path / "cfg/paragon").mkdir(parents=True)
+    (tmp_path / "cfg/paragon/font").write_text("inter\n")
+    assert run() == "FONTCONFIG=none"                               # Inter: the system's Inter answers them
+    (tmp_path / "cfg/paragon/font").write_text("bebas")
+    assert run() == "FONTCONFIG=/etc/paragon/fonts-apps.conf"

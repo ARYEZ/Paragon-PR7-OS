@@ -19,9 +19,22 @@ from PySide6.QtGui import QFont  # noqa: E402
 from PySide6.QtWidgets import (QApplication, QHBoxLayout, QLabel, QMessageBox, QPlainTextEdit,  # noqa: E402
                                QProgressBar, QPushButton, QTextBrowser, QVBoxLayout, QWidget)
 
+def _font() -> str:
+    """Your font choice (Paragon Welcome's FONT: ~/.config/paragon/font): Bebas Neue unless it says inter."""
+    path = os.path.join(os.environ.get("XDG_CONFIG_HOME") or os.path.join(os.path.expanduser("~"), ".config"),
+                        "paragon", "font")
+    try:
+        with open(path, encoding="utf-8") as fh:
+            return "Inter" if fh.read().strip().lower() == "inter" else "Bebas Neue"
+    except OSError:
+        return "Bebas Neue"
+
+
+FONT = _font()
+SIZE = 16 if FONT == "Bebas Neue" else 13
 GRADIENT = "qlineargradient(x1:0, y1:0, x2:1, y2:0, stop:0 #FF0743, stop:0.5 #FA3632, stop:1 #F2781E)"
 STYLE = f"""
-QWidget {{ background: #0C0A0D; color: #E8E8EA; font-family: "Bebas Neue"; font-size: 16px; letter-spacing: 0.5px; }}
+QWidget {{ background: #0C0A0D; color: #E8E8EA; font-family: "{FONT}"; font-size: {SIZE}px; letter-spacing: 0.5px; }}
 QLabel#title {{ font-size: 15px; font-weight: 600; letter-spacing: 2px; color: #8A8A92; }}
 QLabel#heading {{ font-size: 23px; font-weight: 600; }}
 QLabel#status {{ color: #B9B5B8; }}

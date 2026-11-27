@@ -144,7 +144,9 @@ FONTS_APPS = """<?xml version="1.0"?>
 def launcher(app: App) -> str:
     return (f"#!/bin/sh\n# Paragon PR7-{app.letter} ({app.generic}) on PR7-OS\n"
             f"export PYTHONPATH=/opt/paragon/apps/{app.repo}\n"
-            "export FONTCONFIG_FILE=/etc/paragon/fonts-apps.conf     # their text in Bebas Neue\n"
+            "# their text in Bebas Neue, unless you chose Inter (Paragon Welcome > FONT)\n"
+            '[ "$(cat "${XDG_CONFIG_HOME:-$HOME/.config}/paragon/font" 2>/dev/null)" = inter ] || '
+            "export FONTCONFIG_FILE=/etc/paragon/fonts-apps.conf\n"
             f'exec /opt/paragon/venv/bin/python -m {app.package} "$@"\n')
 
 
