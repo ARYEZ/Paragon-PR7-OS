@@ -73,3 +73,11 @@ def test_the_boot_test_knows_the_boot_menu():
     assert boot_test.has_band(Image.open(mock / "boot_menu.png").convert("RGB"))
     assert not boot_test.has_band(Image.open(mock / "boot_splash.png").convert("RGB"))
     assert not boot_test.has_band(Image.open(mock / "login.png").convert("RGB"))
+
+
+def test_first_boot_findings_stay_fixed():
+    build = (LIVE / "build.sh").read_text()
+    assert "cp -a /usr/share/live/build/bootloaders/. config/bootloaders/" in build    # contents, not the folder
+    assert "the live boot menu isn't themed" in build
+    system = (LIVE / "config/hooks/normal/0300-paragon-system.hook.chroot").read_text()
+    assert "apt-get purge -y plasma-welcome" in system and "Install Paragon PR7-OS" in system

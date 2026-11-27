@@ -187,3 +187,14 @@ def test_the_login_screen_logs_in(built, qapp):
     QTest.mouseClick(view, Qt.MouseButton.LeftButton, Qt.KeyboardModifier.NoModifier, QPoint(1796, 1022))
     assert sddm.calls[-1] == ("powerOff",)
     view.close()
+
+
+def test_login_has_no_onscreen_keyboard_and_the_panel_pins_a_list(built):
+    """The first boot test: Debian's SDDM put Qt's virtual keyboard over the password, and one comma-joined string
+    of launchers gave the panel a single unknown icon."""
+    root, _ = built
+    conf = (root / "etc/sddm.conf.d/10-paragon.conf").read_text()
+    assert "[General]" in conf and "\nInputMethod=\n" in conf
+    layout = (root / "usr/share/plasma/look-and-feel/org.paragon.pr7os.obsidian/contents/layouts/"
+                     "org.kde.plasma.desktop-layout.js").read_text()
+    assert 'writeConfig("launchers", ["applications:pr7-e.desktop", ' in layout

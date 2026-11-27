@@ -339,7 +339,7 @@ LAYOUT_APPS = ["pr7-e", "pr7-tm", "pr7-w", "pr7-m", "pr7-p", "pr7-z", "pr7-pm"]
 
 def layout_js() -> str:
     """Plasma's first-login layout: the mock-up's floating bottom panel and the Paragon wallpaper."""
-    launchers = ",".join(f"applications:{a}.desktop" for a in LAYOUT_APPS)
+    launchers = ", ".join(f'"applications:{a}.desktop"' for a in LAYOUT_APPS)
     return f"""// Paragon PR7-OS: the floating bottom panel of the mock-up (launcher, pinned apps, tray, clock).
 var panel = new Panel;
 panel.location = "bottom";
@@ -353,7 +353,7 @@ kickoff.writeConfig("favoritesPortedToKAstats", true);
 
 var tasks = panel.addWidget("org.kde.plasma.icontasks");
 tasks.currentConfigGroup = ["General"];
-tasks.writeConfig("launchers", "{launchers}");
+tasks.writeConfig("launchers", [{launchers}]);   // a list: one string would be one (unknown) launcher
 
 panel.addWidget("org.kde.plasma.marginsseparator");
 panel.addWidget("org.kde.plasma.systemtray");
@@ -541,8 +541,9 @@ def build(root: Path) -> list[Path]:
     shot = wallpaper(1920, 1080, "obsidian", mark=False)
     out.append(write(root, f"{sddm}/background.png", shot))
     out.append(write(root, f"{sddm}/mark.png", mark_image(520, 100)))
-    out.append(write(root, "etc/sddm.conf.d/10-paragon.conf", "[Theme]\nCurrent=paragon\nCursorTheme=breeze_cursors\n"
-                                                               "Font=Inter\n"))
+    out.append(write(root, "etc/sddm.conf.d/10-paragon.conf",
+                     "[General]\n# no on-screen keyboard over the password (Debian turns Qt's virtual keyboard on)\n"
+                     "InputMethod=\n\n[Theme]\nCurrent=paragon\nCursorTheme=breeze_cursors\nFont=Inter\n"))
     # boot splash (Plymouth)
     ply = f"{share}/plymouth/themes/paragon"
     for f in ("paragon.plymouth", "paragon.script"):

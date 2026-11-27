@@ -20,8 +20,12 @@ PY
 if [ -f /etc/calamares/settings.conf ]; then
     sed -i 's/^branding:.*/branding: paragon/' /etc/calamares/settings.conf
 fi
-for f in /usr/share/applications/install-debian.desktop /etc/skel/Desktop/install-debian.desktop; do
-    [ -f "$f" ] || continue
-    sed -i -e 's/^Name=.*/Name=Install Paragon PR7-OS/' -e '/^Name\[/d' -e 's/^Icon=.*/Icon=pr7os/' "$f"
+# "Install Debian" is written in the launcher and in the script that puts it on the live desktop: rename it everywhere
+grep -rlZ "Install Debian" /usr/bin /usr/sbin /usr/share/applications /etc/xdg /etc/skel 2>/dev/null \
+    | xargs -0 -r sed -i -e 's/Install Debian/Install Paragon PR7-OS/g' -e '/^Name\[/d'
+for f in $(grep -rl "^Exec=.*install-debian" /usr/share/applications 2>/dev/null); do
+    sed -i -e 's/^Icon=.*/Icon=pr7os/' "$f"
 done
+# KDE's first-login tour (its own branding in blue and green): the desktop opens straight to PR7-OS
+apt-get purge -y plasma-welcome || true
 update-initramfs -u -k all

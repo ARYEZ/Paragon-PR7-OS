@@ -13,7 +13,12 @@ rm -rf config/includes.chroot_after_packages config/bootloaders
 ./auto/config
 mkdir -p config/includes.chroot_after_packages
 rsync -a /work/build/root/ config/includes.chroot_after_packages/
-cp -a /usr/share/live/build/bootloaders config/bootloaders
+# the contents, not the folder: lb config makes config/bootloaders, and copying the folder into it puts live-build's
+# files one level down, where nothing reads them (the first ISO booted with Debian's own menu)
+mkdir -p config/bootloaders
+cp -a /usr/share/live/build/bootloaders/. config/bootloaders/
 python3 /work/tools/live_bootloader.py config/bootloaders /work/build/root
+grep -q "Paragon PR7-OS" config/bootloaders/grub-pc/live-theme/theme.txt || { echo "the live boot menu isn't themed"; exit 1; }
+ls config/bootloaders
 lb build 2>&1 | tee build.log
 ls -la ./*.iso

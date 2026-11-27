@@ -141,14 +141,19 @@ def main(iso: str, out_dir: str) -> int:
             uefi += ["-drive", f"if=pflash,format=raw,file={work / 'vars.fd'}"]
     m = Machine(uefi + ["-cdrom", iso, "-boot", "d"], work, "uefi")
     menu = splash = None
+    menu_since = None
     last = None
     try:
         while m.elapsed() < 420:
             img = m.shot()
             t = m.elapsed()
             frames.append((t, "UEFI", img))
+            if menu is not None and menu_since and t - menu_since > 15 and has_band(img):
+                m.key("ret")                     # a menu with no timeout must not stall the test
+                menu_since = None
             if menu is None and has_band(img):
                 menu = img
+                menu_since = t
                 img.save(out / "boot_menu.png")
                 result.append(f"boot menu at {t:.0f} s")
             elif menu is not None and splash is None and t > 20 and not has_band(img) and brightness(img) > 3:
