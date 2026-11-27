@@ -42,7 +42,8 @@ a live ISO with the Calamares installer. The owner writes Python; explain the wh
   (postinst: the firewall once, marker /var/lib/paragon/firewall-configured; Flathub `--if-not-exists`); `pr7os-steam`
   opens Discover on Steam (Flathub) or starts it. Depends names must exist in Debian 13 (the ISO build fails otherwise:
   0.2.0's `kscreenlocker`). The look's `faces()` gives accounts with no picture / Debian's (byte-identical to a file in
-  desktop-base or pixmaps) `face.png`; never a chosen one. The helper's apt-get waits for the lock (DPkg::Lock::Timeout).
+  desktop-base or pixmaps) `face.png`; never a chosen one. /etc/skel/.face(.icon) belong to desktop-base: diverted
+  (`skel_faces`), never shipped (dpkg refuses another package's file: 0.2.1's first build). The helper's apt-get waits for the lock (DPkg::Lock::Timeout).
 - **The lock screen** is Plasma's shell package (org.kde.plasma.desktop/contents/lockscreen), not the global theme,
   and its QML unlocks the session: `pr7os/static/lockscreen.py` (run by hook 0200) only restyles it with anchored edits
   (ParagonClock instead of Breeze's Clock; the password field's / unlock key's backgrounds; UserDelegate's gradient

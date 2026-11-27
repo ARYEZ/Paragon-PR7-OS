@@ -550,10 +550,9 @@ def build(root: Path) -> list[Path]:
     out.append(write(root, f"{share}/icons/hicolor/scalable/apps/pr7os-start.svg", start_icon_svg()))
     out.append(write(root, f"{share}/icons/hicolor/scalable/apps/pr7os.svg", start_icon_svg()))
     out.append(write(root, f"{share}/pixmaps/pr7os-mark.png", mark_image(1040, 200)))
-    # the account picture (setup_look.py gives it to accounts that still have Debian's; new accounts get it from skel)
-    face = face_image(256)
-    out.append(write(root, f"{share}/paragon/face.png", face))
-    out.append(write(root, "etc/skel/.face.icon", face))
+    # the account picture (setup_look.py gives it to accounts that still have Debian's, and links /etc/skel's to it:
+    # desktop-base owns /etc/skel/.face.icon, so the package can't ship that file itself)
+    out.append(write(root, f"{share}/paragon/face.png", face_image(256)))
     # system defaults: OBSIDIAN (what a new account starts with)
     for cfg, groups in plasma_settings("obsidian").items():
         body = dict(groups)

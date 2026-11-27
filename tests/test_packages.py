@@ -75,7 +75,8 @@ def test_files_go_to_the_right_package(debs):
     assert {"usr/share/paragon/setup_system.py", "usr/bin/pr7os-steam", "usr/share/applications/pr7os-steam.desktop",
             "etc/apt/apt.conf.d/52paragon-auto-upgrades"} <= set(system)
     assert not any(f in look for f in system if f and not f.endswith("/"))   # each file in one package only
-    assert "usr/share/paragon/face.png" in look and "etc/skel/.face.icon" in look
+    assert "usr/share/paragon/face.png" in look
+    assert not any(f.startswith("etc/skel/") for f in look)      # desktop-base owns /etc/skel/.face.icon (0.2.1's build)
     if any(f.startswith("opt/paragon/apps/") for f in files["paragon-pr7os-apps"]):
         app_files = files["paragon-pr7os-apps"]
         assert "usr/bin/pr7-e" in app_files and "etc/xdg/mimeapps.list" in app_files

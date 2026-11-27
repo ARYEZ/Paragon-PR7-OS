@@ -14,7 +14,8 @@ Every step can run any number of times (each update runs it again):
 - the system's name: Debian's os-release diverted, NAME / PRETTY_NAME / LOGO Paragon's, ID still "debian";
 - the account picture: accounts with no picture, or still Debian's (byte for byte a file Debian ships), get Paragon's
   (AccountsService's icon, which the login and lock screens read, and ~/.face.icon); a picture you chose is never
-  touched. New accounts get it from /etc/skel.
+  touched. New accounts get it from /etc/skel: Debian's /etc/skel/.face(.icon) (desktop-base's swirl) is diverted aside
+  and replaced by a link to Paragon's, as os-release is.
 Standard library only: it runs with Debian's python3, before or without the apps' environment.
 """
 from __future__ import annotations
@@ -111,8 +112,51 @@ def accounts(root: Path) -> list[tuple[str, int, int, Path]]:
     return out
 
 
+SKEL_FACES = ("etc/skel/.face.icon", "etc/skel/.face")
+
+
+def skel_faces(root: Path = Path("/")) -> None:
+    """New accounts copy /etc/skel: Debian's pictures there (owned by desktop-base, which dpkg won't let another
+    package overwrite) are diverted to .paragon-orig, and a link to Paragon's takes their place."""
+    for rel in SKEL_FACES:
+        path = root / rel
+        if path.is_symlink() and os.readlink(path) == "/" + FACE:
+            continue                                     # already Paragon's (every update runs this again)
+        listed = subprocess.run(["dpkg-divert", "--list", "/" + rel], capture_output=True, text=True).stdout \
+            if root == Path("/") and shutil.which("dpkg-divert") else ""
+        if "paragon" not in listed and (path.exists() or path.is_symlink()):
+            if root == Path("/") and shutil.which("dpkg-divert"):
+                subprocess.run(["dpkg-divert", "--package", "paragon", "--divert", f"/{rel}.paragon-orig", "--rename",
+                                "--add", "/" + rel], check=True)
+            else:                                        # tests: a stand-in root, the same outcome
+                path.rename(path.with_name(path.name + ".paragon-orig"))
+        path.parent.mkdir(parents=True, exist_ok=True)
+        if path.is_symlink() or path.exists():
+            path.unlink()
+        path.symlink_to("/" + FACE)
+
+
+def unskel_faces(root: Path = Path("/")) -> None:
+    for rel in SKEL_FACES:
+        path = root / rel
+        if path.is_symlink() and os.readlink(path) == "/" + FACE:
+            path.unlink()
+        if root == Path("/") and shutil.which("dpkg-divert"):
+            listed = subprocess.run(["dpkg-divert", "--list", "/" + rel], capture_output=True, text=True).stdout
+            if "paragon" in listed:
+                subprocess.run(["dpkg-divert", "--package", "paragon", "--rename", "--remove", "/" + rel], check=True)
+        else:
+            orig = path.with_name(path.name + ".paragon-orig")
+            if orig.exists() or orig.is_symlink():
+                orig.rename(path)
+
+
 def debian_pictures(root: Path) -> set[bytes]:
     found = set()
+    for rel in SKEL_FACES:                               # what accounts made before PR7-OS's look copied from skel
+        orig = root / (rel + ".paragon-orig")
+        if orig.is_file():
+            found.add(orig.read_bytes())
     for d in DEBIAN_PICTURES:
         for f in (root / d).rglob("*") if (root / d).is_dir() else []:
             if f.is_file() and f.suffix.lower() in (".png", ".jpg", ".jpeg", ".svg") and f.stat().st_size < 4_000_000:
@@ -203,6 +247,7 @@ def configure(strict: bool) -> None:
     lock = [sys.executable, str(SHARE / "lockscreen.py")] + (["--strict"] if strict else [])
     subprocess.run(lock, check=True)
     os_release()
+    skel_faces()
     faces()
     if shutil.which("plymouth-set-default-theme"):
         run("plymouth-set-default-theme", "paragon")
@@ -214,6 +259,7 @@ def configure(strict: bool) -> None:
 def remove() -> None:
     subprocess.run([sys.executable, str(SHARE / "lockscreen.py"), "--restore"], check=False)
     unfaces()
+    unskel_faces()
     if STYLE.exists():
         shutil.rmtree(STYLE)
     for pf2 in GRUB_THEME.glob("*.pf2"):

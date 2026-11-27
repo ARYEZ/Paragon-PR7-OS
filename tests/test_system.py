@@ -111,3 +111,26 @@ def test_removing_the_look_takes_only_paragons_picture_back(people):
     assert not (acc / "icons/ari").exists() and "Icon=" not in (acc / "users/ari").read_text()
     assert not (root / "home/ari/.face.icon").is_symlink()
     assert (acc / "icons/sam").read_bytes() == b"SAM'S OWN PHOTO"
+
+
+def test_new_accounts_get_paragons_picture_from_skel(people):
+    """desktop-base's /etc/skel/.face.icon (the swirl, and .face linking to it) is set aside, not overwritten: dpkg
+    refuses a package that ships another package's file, which stopped 0.2.1's first ISO build."""
+    mod, root = people
+    skel = root / "etc/skel"
+    skel.mkdir(parents=True)
+    (skel / ".face.icon").write_bytes(b"DEBIAN SWIRL COPY")
+    (skel / ".face").symlink_to(".face.icon")
+    (root / "home/kim/.face.icon").write_bytes(b"DEBIAN SWIRL COPY")   # copied from skel before PR7-OS's look
+    (root / "home/sam/.face.icon").write_bytes(b"DEBIAN SWIRL COPY")
+    mod.skel_faces(root)
+    assert os.readlink(skel / ".face.icon") == "/usr/share/paragon/face.png"
+    assert os.readlink(skel / ".face") == "/usr/share/paragon/face.png"
+    assert (skel / ".face.icon.paragon-orig").read_bytes() == b"DEBIAN SWIRL COPY"
+    mod.faces(root)
+    assert os.readlink(root / "home/kim/.face.icon") == "/usr/share/paragon/face.png"   # the copied swirl replaced
+    assert (root / "var/lib/AccountsService/icons/sam").read_bytes() == b"SAM'S OWN PHOTO"   # sam chose a photo:
+    assert (root / "home/sam/.face.icon").read_bytes() == b"DEBIAN SWIRL COPY"              # their account untouched
+    mod.skel_faces(root)                                          # every update: the same
+    mod.unskel_faces(root)
+    assert (skel / ".face.icon").read_bytes() == b"DEBIAN SWIRL COPY" and os.readlink(skel / ".face") == ".face.icon"
