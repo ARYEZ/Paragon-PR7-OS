@@ -117,7 +117,7 @@ esac
 }
 
 CONTROL = {
-    "paragon-pr7os-look": ("all", "python3, plasma-workspace, kscreenlocker, sddm, plymouth, grub-common, dpkg",
+    "paragon-pr7os-look": ("all", "python3, plasma-workspace, sddm, plymouth, grub-common, dpkg",
                            "Paragon PR7-OS's look",
                            "The family look for Debian's KDE Plasma: colour schemes, window decoration, wallpaper,\n"
                            " global themes, login screen, lock screen, boot splash and boot menu."),
