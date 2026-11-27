@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.2.2
+
+- **0.2.1's additions now actually install.** The updater only installed the four packages it knew by name, so the
+  new paragon-pr7os-system (names on the network, printing, security updates, the firewall, Flatpak, Vulkan) was
+  skipped. It now installs every PR7-OS package the release lists. Already on 0.2.1? Run the update twice this once
+  (`sudo /usr/libexec/paragon/pr7os-update-helper` over SSH, or UPDATE in PR7-OS Update): the first run brings the
+  fixed updater, the second the rest.
+- When an update includes the updater itself, its new copy now looks again in the same run, so a fix like this one
+  won't need a second run in future.
+
 ## 0.2.1
 
 What a desktop needs beyond Plasma, in a new package (paragon-pr7os-system) that the updater brings to installed

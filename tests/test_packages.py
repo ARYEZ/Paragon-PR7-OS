@@ -127,3 +127,13 @@ def test_setup_look_and_the_updater_are_valid_python():
     for f in ("setup_look.py", "lockscreen.py", "system/setup_system.py", "updater/pr7os_update.py", "updater/pr7os-update",
               "updater/pr7os-update-helper", "updater/window.py"):
         compile((static / f).read_text(), f, "exec")
+
+
+def test_the_updater_installs_every_package_that_is_built():
+    """0.2.1 shipped a fifth package that the installed updater's list didn't name, so updates skipped it."""
+    import importlib.util
+    spec = importlib.util.spec_from_file_location("pr7os_update", packages.STATIC / "updater/pr7os_update.py")
+    u = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(u)
+    manifest = {"packages": [{"name": name, "version": "9"} for name in packages.CONTROL]}
+    assert sorted(p["name"] for p in u.pending(manifest, {})) == sorted(packages.CONTROL)

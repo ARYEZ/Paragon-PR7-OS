@@ -22,7 +22,8 @@ REPO = "ARYEZ/Paragon-PR7-OS"
 MANIFEST = "pr7os-update.json"
 USER_AGENT = "Paragon-PR7-OS-update"           # names only the program
 DEB_NAME = re.compile(r"^paragon-pr7os-[a-z]+_[A-Za-z0-9.+~]+_(all|amd64)\.deb$")
-PACKAGES = ("paragon-pr7os-look", "paragon-pr7os-apps", "paragon-pr7os-python", "paragon-pr7os-updates")
+PACKAGE = re.compile(r"^paragon-pr7os-[a-z]+$")   # any of PR7-OS's own packages the release lists (0.2.1's fixed
+                                                   # list of four skipped the new paragon-pr7os-system)
 
 
 class UpdateError(Exception):
@@ -81,7 +82,7 @@ def pending(manifest: dict, have: dict[str, str]) -> list[dict]:
     """The manifest's packages whose installed version differs (or that aren't installed yet)."""
     out = []
     for p in manifest.get("packages", []):
-        if p.get("name") in PACKAGES and have.get(p["name"]) != p.get("version"):
+        if PACKAGE.match(str(p.get("name", ""))) and have.get(p["name"]) != p.get("version"):
             out.append(p)
     return out
 

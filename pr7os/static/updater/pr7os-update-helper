@@ -24,8 +24,10 @@ def main() -> int:
         say("STEP Looking for the newest release")
         info = u.latest()
         pkgs = u.pending(info["manifest"], u.installed())
+        before = os.environ.get("PR7OS_UPDATE_DONE", "")          # what the run before a re-run installed
+        logout = before == "logout"
         if not pkgs:
-            say(f"DONE up-to-date {info['version']}")
+            say(f"DONE {before or 'up-to-date'} {info['version']}")
             return 0
         with tempfile.TemporaryDirectory(prefix="pr7os-update-") as tmp:
             say(f"STEP Downloading Paragon PR7-OS {info['version']}")
@@ -36,7 +38,15 @@ def main() -> int:
         if rc:
             say(f"ERROR apt-get stopped with code {rc}")
             return rc
-        say(f"DONE {'logout' if u.needs_logout(pkgs) else 'installed'} {info['version']}")
+        logout = logout or u.needs_logout(pkgs)
+        if any(p["name"] == "paragon-pr7os-updates" for p in pkgs) and not os.environ.get("PR7OS_UPDATE_RERUN"):
+            # the updater itself was just updated: its new copy may know more (a new package, a new step), so it
+            # looks again, once, in this same run
+            say("STEP The updater was updated: checking again with the new one")
+            env = dict(os.environ, PR7OS_UPDATE_RERUN="1", PR7OS_UPDATE_DONE="logout" if logout else "installed")
+            me = os.path.abspath(__file__)
+            os.execve(sys.executable, [sys.executable, me], env)
+        say(f"DONE {'logout' if logout else 'installed'} {info['version']}")
         return 0
     except u.UpdateError as e:
         say(f"ERROR {e}")

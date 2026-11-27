@@ -56,6 +56,7 @@ def main() -> int:
     done = subprocess.run(["/usr/libexec/paragon/pr7os-update-helper"], env=env, capture_output=True, text=True)
     print(done.stdout, done.stderr)
     assert done.returncode == 0 and done.stdout.strip().splitlines()[-1] == f"DONE installed {NEW}", done.stdout
+    assert "STEP The updater was updated: checking again with the new one" in done.stdout   # its new copy looked again
     assert installed_version() == NEW, installed_version()
     again = subprocess.run(["/usr/libexec/paragon/pr7os-update-helper"], env=env, capture_output=True, text=True)
     assert again.stdout.strip().splitlines()[-1] == f"DONE up-to-date {NEW}", again.stdout

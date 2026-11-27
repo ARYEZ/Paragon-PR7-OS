@@ -93,6 +93,12 @@ def test_the_newest_release_and_whats_pending(env):
     names = [p["name"] for p in u.pending(info["manifest"], have)]
     assert names == ["paragon-pr7os-updates", "paragon-pr7os-look"]                     # the look isn't there yet
     assert u.pending(info["manifest"], {p["name"]: VERSION for p in info["manifest"]["packages"]}) == []
+    # a package the updater has never heard of is installed too, if it's PR7-OS's (0.2.1's fixed list of four skipped
+    # the new paragon-pr7os-system); anything else in a manifest is ignored
+    extra = {"packages": [{"name": "paragon-pr7os-system", "version": VERSION},
+                          {"name": "paragon-pr7os-brandnew", "version": VERSION},
+                          {"name": "openssh-server", "version": "1"}, {"name": "paragon-pr7os-../x", "version": "1"}]}
+    assert [p["name"] for p in u.pending(extra, have)] == ["paragon-pr7os-system", "paragon-pr7os-brandnew"]
     assert u.needs_logout(u.pending(info["manifest"], have))
 
 
@@ -118,6 +124,9 @@ def test_the_helper_installs_the_release(env, tools):
     assert lines[0] == "STEP Looking for the newest release"
     assert "PROGRESS 1 2 paragon-pr7os-updates_9.9.9_all.deb" in lines
     assert lines[-1] == f"DONE logout {VERSION}"                      # the look changed: log out to see it
+    # the updater updated itself, so its new copy looked again (once: the stand-in dpkg never changes its answer)
+    assert lines.count("STEP The updater was updated: checking again with the new one") == 1
+    assert lines.count("STEP Looking for the newest release") == 2
     calls = tools["log"].read_text().splitlines()
     assert calls[0] == "apt-get -o DPkg::Lock::Timeout=600 update -qq"     # waits out Debian's daily security updates
     install = calls[1].split()
