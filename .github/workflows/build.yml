@@ -36,7 +36,7 @@ jobs:
         run: |
           sudo apt-get update -q
           sudo apt-get install -y -q libegl1 libgl1 libxkbcommon0 libxkbcommon-x11-0 libxcb-cursor0 libfontconfig1 libpulse0 grub-common
-          pip install -q pytest PySide6 PyQt6 PyQt6-QScintilla paramiko keyring pyte psutil pykeepass mutagen Pillow
+          pip install -q pytest PySide6 PyQt6 PyQt6-QScintilla paramiko keyring pyte psutil pykeepass mutagen Pillow pyyaml
       - name: Tests (the generated theme files, the login screen, every app starting on Linux)
         env:
           PR7OS_FAMILY: ${{ github.workspace }}/family
