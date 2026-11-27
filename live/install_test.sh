@@ -50,12 +50,18 @@ grep -q '^Inst nvidia-kernel-dkms' /tmp/drivers.log || fail "the driver's kernel
 echo "drivers helper: firmware and nvidia-driver resolve in Debian 13"
 # Welcome's REMOTE DESKTOP: KRdp's settings page (what SET UP opens) is there, and the firewall's 3389 rules are home-only
 find /usr/lib -path '*kcms*' -name '*krdp*' | grep -q . || fail "KRdp's settings page isn't installed"
-if [ ! -f /var/lib/paragon/remote-desktop-allowed ]; then
+# A rule for some networks only makes ufw test the kernel's firewall first (initcaps); this unprivileged container may
+# not touch it ("Permission denied (you must be root)"), a real PC and the ISO's build can. That one reason is
+# accepted here (the setup tries again on the next update, and the ISO's boot test reads the three rules in a real
+# PR7-OS); anything else fails.
+if [ -f /var/lib/paragon/remote-desktop-allowed ]; then
+    echo "remote desktop: KRdp installed, firewall rule added"
+elif grep 'PR7-OS remote desktop' /tmp/install.log | grep -q 'initcaps'; then
+    echo "remote desktop: KRdp installed; firewall rule left for a real kernel (this container may not test it)"
+else
     grep 'PR7-OS ' /tmp/install.log || true
-    ufw allow from 192.168.0.0/16 to any port 3389 proto tcp comment 'Remote desktop (home)' || true
     fail "the remote desktop firewall rule wasn't added"
 fi
-echo "remote desktop: KRdp installed, firewall rule added"
 # Steam's NVIDIA libraries: the service is on at every start (it does nothing here: no NVIDIA driver running)
 systemctl is-enabled pr7os-flatpak-gl.service 2>/dev/null | grep -qx enabled \
     || [ -L /etc/systemd/system/multi-user.target.wants/pr7os-flatpak-gl.service ] || fail "pr7os-flatpak-gl isn't enabled"
