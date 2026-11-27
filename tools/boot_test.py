@@ -249,7 +249,7 @@ def main(iso: str, out_dir: str) -> int:
                  "-cdrom", iso], work, "login")
     login_ok = lock_shown = unlocked = packaged = False
     firewall_on = flathub_listed = avahi_on = False
-    print_ok = apps_ok = False
+    print_ok = apps_ok = launcher_ok = is_running = False
     try:
         while m.elapsed() < 240:
             img = m.shot()
@@ -311,11 +311,26 @@ def main(iso: str, out_dir: str) -> int:
         time.sleep(3)
         result.append(f"PR7-Q: {'running' if q_running else 'NOT RUNNING'}; Print: "
                       f"{'answered' if print_ok else 'NOTHING HAPPENED'}")
+        # PR7-LN: running from autostart; Alt+Space (a Plasma shortcut, taken from KRunner) opens its launcher
+        ln_running = "pr7ln" in m.guest("/bin/sh", ["-c", "pgrep -af 'python -m pr7ln' || true"])
+        before = m.shot()
+        m.key("alt-spc")
+        time.sleep(5)
+        after = m.shot()
+        frames.append((m.elapsed(), "ALT+SPACE", after))
+        after.save(out / "launcher.png")
+        launcher_ok = ln_running and difference(after, before) > 3
+        m.key("esc")
+        time.sleep(2)
+        is_running = "pr7is" in m.guest("/bin/sh", ["-c", "pgrep -af 'python -m pr7is --index-service' || true"])
+        result.append(f"PR7-LN: {'running' if ln_running else 'NOT RUNNING'}; Alt+Space: "
+                      f"{'opened it' if launcher_ok else 'NOTHING HAPPENED'}; PR7-IS service: "
+                      f"{'running' if is_running else 'NOT RUNNING'}")
         # every app in the real Plasma session: still running after a while, and a window on the screen
         base = m.shot()
         tiles, failed, notes = [], [], []
         for app in family_apps.APPS:
-            if app.autostart:                      # already running (PR7-Q, in the tray)
+            if app.autostart == "--tray":          # already running in the tray (PR7-Q, PR7-LN): checked by their keys
                 continue
             log = f"/tmp/{app.command}.log"
             in_session(m, f"exec {app.command} > {log} 2>&1")
@@ -350,7 +365,7 @@ def main(iso: str, out_dir: str) -> int:
     (out / "result.txt").write_text("\n".join(result) + "\n")
     print("\n".join(result))
     return 0 if (desktop_ok and login_ok and lock_shown and unlocked and packaged and firewall_on
-                  and flathub_listed and avahi_on and print_ok and apps_ok) else 1
+                  and flathub_listed and avahi_on and print_ok and apps_ok and launcher_ok and is_running) else 1
 
 
 if __name__ == "__main__":

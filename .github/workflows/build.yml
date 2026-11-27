@@ -16,7 +16,7 @@ on:
         default: false
 
 env:
-  APPS: "e w l f r p m z db hx wm fs tm hb bk pm sm hw du q"
+  APPS: "e w l f r p m z db hx wm fs tm hb bk pm sm hw du q is ln"
 
 jobs:
   test:

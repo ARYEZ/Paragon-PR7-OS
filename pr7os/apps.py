@@ -15,7 +15,7 @@ Layout in the image:
     /etc/xdg/autostart/paragon-pr7-<x>.desktop    apps that start at sign-in (PR7-Q, as Greenshot does)
 
 Only apps that work on Linux are here. Left out (Windows-only for now): PR7-AR (Autoruns), PR7-UN (uninstaller),
-PR7-U (Windows installers), PR7-CB / PR7-LN / PR7-IS (global keys, Wayland's clipboard, the NTFS index).
+PR7-U (Windows installers), PR7-CB (Wayland's clipboard).
 """
 from __future__ import annotations
 
@@ -93,11 +93,20 @@ APPS = [
                  ("window", "Capture window", "--window", "Alt+Print"),
                  ("full", "Capture full screen", "--full", "Ctrl+Print")),
         autostart="--tray"),
+    App("IS", "Search", "File Search", "System;Utility;Filesystem;",
+        actions=(("search", "Search files", "", "Ctrl+Alt+Space"),), autostart="--index-service"),
+    App("LN", "Launcher", "Launcher", "Utility;",
+        actions=(("show", "Open the launcher", "", "Alt+Space"),), autostart="--tray"),
 ]
 
+# Plasma's own defaults that PR7-OS changes for its apps (/etc/xdg/kglobalshortcutsrc: what a new account starts with):
+# KRunner keeps Alt+F2 and the Search key, and Alt+Space goes to PR7-LN (Flow Launcher's key).
+SHORTCUT_DEFAULTS = """[services][org.kde.krunner.desktop]
+_launch=Alt+F2\tSearch
+"""
+
 LEFT_OUT = {"AR": "Autoruns: Windows' startup places", "UN": "uninstaller: Windows programs",
-            "U": "family installer: Windows setups", "CB": "clipboard history: global keys, Wayland's clipboard",
-            "LN": "launcher: global keys (Plasma has KRunner)", "IS": "file search: the NTFS index"}
+            "U": "family installer: Windows setups", "CB": "clipboard history: global keys, Wayland's clipboard"}
 
 
 def launcher(app: App) -> str:
@@ -117,7 +126,7 @@ def desktop_entry(app: App) -> str:
     if app.actions:
         lines.append("Actions=" + ";".join(a[0] for a in app.actions) + ";")
         for ident, name, args, shortcut in app.actions:
-            lines += ["", f"[Desktop Action {ident}]", f"Name={name}", f"Exec={app.command} {args}"]
+            lines += ["", f"[Desktop Action {ident}]", f"Name={name}", f"Exec={app.command} {args}".rstrip()]
             if shortcut:
                 lines.append(f"X-KDE-Shortcuts={shortcut}")
     return "\n".join(lines) + "\n"
@@ -195,10 +204,12 @@ def stage(family: Path, root: Path) -> list[Path]:
     req = root / "opt/paragon/requirements.txt"
     req.parent.mkdir(parents=True, exist_ok=True)
     req.write_text("\n".join(requirements(family)) + "\n", encoding="utf-8")
+    keys = root / "etc/xdg/kglobalshortcutsrc"
+    keys.write_text(SHORTCUT_DEFAULTS, encoding="utf-8")
     mime = root / "etc/xdg/mimeapps.list"
     mime.parent.mkdir(parents=True, exist_ok=True)
     mime.write_text(mimeapps(), encoding="utf-8")
-    return out + [req, mime]
+    return out + [req, keys, mime]
 
 
 def main(argv: list[str] | None = None) -> int:
