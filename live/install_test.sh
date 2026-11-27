@@ -50,7 +50,11 @@ grep -q '^Inst nvidia-kernel-dkms' /tmp/drivers.log || fail "the driver's kernel
 echo "drivers helper: firmware and nvidia-driver resolve in Debian 13"
 # Welcome's REMOTE DESKTOP: KRdp's settings page (what SET UP opens) is there, and the firewall's 3389 rules are home-only
 find /usr/lib -path '*kcms*' -name '*krdp*' | grep -q . || fail "KRdp's settings page isn't installed"
-[ -f /var/lib/paragon/remote-desktop-allowed ] || fail "the remote desktop firewall rule wasn't added"
+if [ ! -f /var/lib/paragon/remote-desktop-allowed ]; then
+    grep 'PR7-OS ' /tmp/install.log || true
+    ufw allow from 192.168.0.0/16 to any port 3389 proto tcp comment 'Remote desktop (home)' || true
+    fail "the remote desktop firewall rule wasn't added"
+fi
 echo "remote desktop: KRdp installed, firewall rule added"
 # Steam's NVIDIA libraries: the service is on at every start (it does nothing here: no NVIDIA driver running)
 systemctl is-enabled pr7os-flatpak-gl.service 2>/dev/null | grep -qx enabled \

@@ -81,8 +81,10 @@ def remote_desktop() -> str:
         return "ufw isn't installed"
     for net in HOME_NETWORKS:
         rule = ["allow", "from", net, "to", "any", "port", "3389", "proto", "tcp", "comment", "Remote desktop (home)"]
-        if subprocess.run([ufw, *rule], stdout=subprocess.DEVNULL).returncode:
-            return f"ufw {' '.join(rule)} failed; tried again on the next update"
+        done = subprocess.run([ufw, *rule], capture_output=True, text=True)
+        if done.returncode:
+            why = (done.stderr or done.stdout).strip()[-200:]
+            return f"ufw {' '.join(rule)} failed ({why}); tried again on the next update"
     marker.parent.mkdir(parents=True, exist_ok=True)
     marker.write_text("PR7-OS allowed remote desktop from home networks once; it's yours to change now.\n",
                       encoding="utf-8")
