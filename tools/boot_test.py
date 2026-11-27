@@ -11,6 +11,7 @@ timeline.png (every frame, small) and result.txt; the exit code is 1 when a desk
 """
 from __future__ import annotations
 
+import json
 import os
 import shutil
 import socket
@@ -39,6 +40,7 @@ class Machine:
         self.sock = work / f"{name}.sock"
         kvm = os.access("/dev/kvm", os.R_OK | os.W_OK)
         base = ["qemu-system-x86_64", "-machine", "q35", "-m", "6144", "-smp", "4",
+                "-global", "ICH9-LPC.disable_s3=0",          # sleep (S3) offered to the guest: the suspend check
                 *(["-enable-kvm", "-cpu", "host"] if kvm else ["-accel", "tcg"]),
                 "-vga", "virtio", "-display", "none", "-serial", f"file:{work / (name + '-serial.log')}",
                 "-device", "qemu-xhci", "-device", "usb-tablet",
@@ -219,26 +221,6 @@ def main(iso: str, out_dir: str) -> int:
     menu_since = None
     last = None
     try:
-        # an encrypted disk's question, as cryptsetup asks it (plymouth ask-for-password, from the initramfs: its
-        # font and text plugin must be in there): the ISO's paragon-asktest asks once and marks the serial log
-        serial = work / "login-serial.log"
-        while m.elapsed() < 150 and not asked:
-            asked = serial.exists() and "PARAGON-ASKTEST-ASKING" in serial.read_text(errors="replace")
-            time.sleep(2)
-        if asked:
-            time.sleep(4)                                  # the question drawn
-            empty = m.shot()
-            frames.append((m.elapsed(), "UNLOCK", empty))
-            empty.save(out / "unlock_question.png")
-            m.keys("pr7os")
-            time.sleep(2)
-            typed = m.shot()
-            frames.append((m.elapsed(), "UNLOCK", typed))
-            typed.save(out / "unlock_typed.png")
-            dots_shown = orange(typed) > orange(empty) + 40      # five dots in the family orange
-            m.key("ret")
-        result.append(f"unlock question: {'asked' if asked else 'NOT ASKED'}; dots: "
-                      f"{'shown' if dots_shown else 'NOT SHOWN'}")
         while m.elapsed() < 240:
             img = m.shot()
             t = m.elapsed()
@@ -274,10 +256,30 @@ def main(iso: str, out_dir: str) -> int:
     m = Machine(["-kernel", str(work / "vmlinuz"), "-initrd", str(work / "initrd.img"), "-append", append,
                  "-cdrom", iso], work, "login")
     login_ok = lock_shown = unlocked = packaged = False
-    asked = dots_shown = passed_on = False
+    asked = dots_shown = passed_on = welcome_ok = sleep_ok = False
     firewall_on = flathub_listed = avahi_on = False
     print_ok = apps_ok = launcher_ok = is_running = False
     try:
+        # an encrypted disk's question, as cryptsetup asks it (plymouth ask-for-password, from the initramfs: its
+        # font and text plugin must be in there): the ISO's paragon-asktest asks once and marks the serial log
+        serial = work / "login-serial.log"
+        while m.elapsed() < 150 and not asked:
+            asked = serial.exists() and "PARAGON-ASKTEST-ASKING" in serial.read_text(errors="replace")
+            time.sleep(2)
+        if asked:
+            time.sleep(4)                                  # the question drawn
+            empty = m.shot()
+            frames.append((m.elapsed(), "UNLOCK", empty))
+            empty.save(out / "unlock_question.png")
+            m.keys("pr7os")
+            time.sleep(2)
+            typed = m.shot()
+            frames.append((m.elapsed(), "UNLOCK", typed))
+            typed.save(out / "unlock_typed.png")
+            dots_shown = orange(typed) > orange(empty) + 40      # five dots in the family orange
+            m.key("ret")
+        result.append(f"unlock question: {'asked' if asked else 'NOT ASKED'}; dots: "
+                      f"{'shown' if dots_shown else 'NOT SHOWN'}")
         while m.elapsed() < 240:
             img = m.shot()
             frames.append((m.elapsed(), "LOGIN", img))
@@ -388,6 +390,115 @@ def main(iso: str, out_dir: str) -> int:
         apps_ok = bool(tiles) and not failed
         result.append(f"apps: {len(tiles) - len(failed)} of {len(tiles)} started"
                       + (f" (not: {', '.join('PR7-' + f for f in failed)})" if failed else ""))
+        # ---- Welcome, its keys pressed in the session (--press clicks a key as the mouse would), the effects checked
+        def welcome(label: str, wait: float) -> Image.Image:
+            m.guest("/bin/sh", ["-c", "pkill -f 'welcome/welcome.py' || true"])
+            time.sleep(2)
+            in_session(m, f'exec pr7os-welcome --press "{label}" > /tmp/welcome.log 2>&1')
+            time.sleep(wait)
+            m.key("shift")
+            return m.shot()
+        home = "/home/paragon"
+        # FONT -> INTER: the account's choice and Plasma's fonts; an app started now no longer gets Bebas Neue
+        shot = welcome("INTER", 10)
+        shot.save(out / "welcome_font.png")
+        chosen = m.guest("/bin/sh", ["-c", f"cat {home}/.config/paragon/font; echo; "
+                                           f"grep '^font=' {home}/.config/kdeglobals"])
+        m.guest("/bin/sh", ["-c", "pkill -f 'python -m pr7w$' || true"])
+        in_session(m, "exec pr7-w > /tmp/pr7w-font.log 2>&1")
+        time.sleep(12)
+        env = m.guest("/bin/sh", ["-c", "p=$(pgrep -f 'python -m pr7w$' | head -n1); "
+                                        "[ -n \"$p\" ] && tr '\\0' '\\n' < /proc/$p/environ | grep -c FONTCONFIG_FILE; echo pid=$p"])
+        m.guest("/bin/sh", ["-c", "pkill -f 'python -m pr7w$' || true"])
+        font_ok = chosen.startswith("inter") and "font=Inter," in chosen and "pid=" in env \
+            and env.split("pid=")[1].strip() != "" and env.strip().startswith("0")
+        welcome("BEBAS NEUE", 6)                       # back to PR7-OS's own for the rest of the test
+        result.append(f"Welcome FONT: {'Inter for the account and the apps' if font_ok else 'NOT APPLIED (' + (chosen + ' ' + env).replace(chr(10), ' ')[:120] + ')'}")
+        # BACKUPS: PR7-BK opens its wizard with the home backup ready
+        shot = welcome("BACK UP TO A DRIVE", 18)
+        shot.save(out / "welcome_backups.png")
+        backups_ok = "--new-home-backup" in m.guest("/bin/sh", ["-c", "pgrep -af 'python -m pr7bk' || true"])
+        m.guest("/bin/sh", ["-c", "pkill -f 'python -m pr7bk' || true"])
+        result.append(f"Welcome BACKUPS: {'PR7-BK opened the home backup' if backups_ok else 'PR7-BK DID NOT OPEN'}")
+        # SSH -> TURN ON: Plasma's password dialog (pkexec), the live password, the server installed and running
+        welcome("TURN ON", 8)
+        asked_pw = m.shot()
+        frames.append((m.elapsed(), "SSH", asked_pw))
+        asked_pw.save(out / "welcome_ssh_password.png")
+        m.keys("live")
+        m.key("ret")
+        ssh_ok = False
+        for _ in range(30):                            # openssh-server comes from Debian over the VM's network
+            time.sleep(6)
+            m.key("shift")
+            if m.guest("/bin/sh", ["-c", "systemctl is-active ssh || true"]).strip() == "active":
+                ssh_ok = True
+                break
+        shot = m.shot()
+        shot.save(out / "welcome_ssh.png")
+        if not ssh_ok:
+            (out / "welcome.log").write_text(m.guest("/bin/sh", ["-c", "cat /tmp/welcome.log; journalctl -b --no-pager -o cat | grep -iE 'polkit|pkexec|ssh' | tail -n 40"]))
+        result.append(f"Welcome SSH: {'on (password asked, server running)' if ssh_ok else 'NOT ON'}")
+        # DRIVERS: the helper reads this machine's graphics card (QEMU's) through lspci
+        drivers = m.guest("/usr/libexec/paragon/pr7os-drivers-helper", ["state"])
+        try:
+            drivers_ok = bool(json.loads(drivers).get("gpus"))
+        except ValueError:
+            drivers_ok = False
+        (out / "drivers.json").write_text(drivers)
+        result.append(f"Welcome DRIVERS: {'card found' if drivers_ok else 'NO CARD FOUND'}")
+        m.guest("/bin/sh", ["-c", "pkill -f 'welcome/welcome.py' || true"])
+        welcome_ok = font_ok and backups_ok and ssh_ok and drivers_ok
+        # ---- sleep and wake: Plasma locks on the way down, the PC wakes to the lock screen, the password brings the
+        # session back, and what runs in it still answers (Print -> PR7-Q, the PR7-IS service, a new app)
+        m.guest("/bin/sh", ["-c", "(sleep 2; systemctl suspend) > /dev/null 2>&1 &"])
+        slept = False
+        for _ in range(15):
+            time.sleep(2)
+            if "suspended" in m.hmp("info status"):
+                slept = True
+                break
+        time.sleep(5)
+        m.hmp("system_wakeup")
+        time.sleep(15)
+        m.key("shift")
+        time.sleep(3)
+        woke = m.shot()
+        frames.append((m.elapsed(), "WAKE", woke))
+        woke.save(out / "wake_lock_screen.png")
+        m.keys("live")
+        m.key("ret")
+        time.sleep(12)
+        m.key("shift")
+        back = m.shot()
+        frames.append((m.elapsed(), "WAKE", back))
+        back.save(out / "wake_desktop.png")
+        running = "running" in m.hmp("info status")
+        woke_locked = difference(woke, locked) < 8 or difference(woke, back) > 8   # the lock screen, then the session
+        before = m.shot()
+        m.key("print")
+        time.sleep(8)
+        after = m.shot()
+        after.save(out / "wake_print.png")
+        print_after = difference(after, before) > 4
+        m.key("esc")
+        time.sleep(2)
+        m.key("esc")
+        time.sleep(2)
+        is_after = "pr7is" in m.guest("/bin/sh", ["-c", "pgrep -af 'python -m pr7is --index-service' || true"])
+        in_session(m, "exec pr7-e > /tmp/pr7e-wake.log 2>&1")
+        time.sleep(12)
+        e_after = "pr7e" in m.guest("/bin/sh", ["-c", "pgrep -af 'python -m pr7e$' || true"])
+        shot = m.shot()
+        shot.save(out / "wake_app.png")
+        m.guest("/bin/sh", ["-c", "pkill -f 'python -m pr7e$' || true"])
+        sleep_log = m.guest("/bin/sh", ["-c", "journalctl -b --no-pager -o cat | grep -E 'PM: suspend (entry|exit)' || true"])
+        (out / "sleep.txt").write_text(sleep_log)
+        sleep_ok = slept and running and "suspend exit" in sleep_log and woke_locked and print_after and is_after and e_after
+        result.append(f"sleep: {'slept' if slept else 'DID NOT SLEEP'}, {'woke' if running and 'suspend exit' in sleep_log else 'DID NOT WAKE'}; "
+                      f"after waking: lock screen {'shown' if woke_locked else 'NOT SHOWN'}, Print "
+                      f"{'answered' if print_after else 'NOTHING HAPPENED'}, PR7-IS {'running' if is_after else 'NOT RUNNING'}, "
+                      f"apps {'start' if e_after else 'DO NOT START'}")
         (out / "journal.txt").write_text(m.guest("/usr/bin/journalctl", ["-b", "--no-pager", "-o", "short-monotonic"], 120))
         (out / "lockscreen-files.txt").write_text(m.guest("/bin/sh", ["-c",
             "ls -la /usr/share/plasma/shells/org.kde.plasma.desktop/contents/lockscreen/; "
@@ -402,7 +513,7 @@ def main(iso: str, out_dir: str) -> int:
     timeline(frames, out / "timeline.png")
     (out / "result.txt").write_text("\n".join(result) + "\n")
     print("\n".join(result))
-    return 0 if (asked and dots_shown and passed_on and desktop_ok and login_ok and lock_shown and unlocked and packaged and firewall_on
+    return 0 if (asked and dots_shown and passed_on and welcome_ok and sleep_ok and desktop_ok and login_ok and lock_shown and unlocked and packaged and firewall_on
                   and flathub_listed and avahi_on and print_ok and apps_ok and launcher_ok and is_running) else 1
 
 

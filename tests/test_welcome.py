@@ -121,3 +121,9 @@ def test_the_launcher_follows_the_font_choice(tmp_path):
     assert run() == "FONTCONFIG=none"                               # Inter: the system's Inter answers them
     (tmp_path / "cfg/paragon/font").write_text("bebas")
     assert run() == "FONTCONFIG=/etc/paragon/fonts-apps.conf"
+
+
+def test_press_clicks_a_key_like_a_mouse(welcome):
+    mod, w, tmp = welcome
+    assert mod.press(w, "GET STEAM") and w.started[-1] == ["pr7os-steam"]
+    assert not mod.press(w, "NO SUCH KEY")

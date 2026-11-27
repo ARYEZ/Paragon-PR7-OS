@@ -1,5 +1,17 @@
 # Changelog
 
+## 0.6.0
+
+A new ISO with 0.5.1 (DRIVERS) and 0.5.2 (an encrypted disk by default), and a boot test that now also checks:
+- **the encrypted disk's question**: asked from the initramfs as cryptsetup asks it, typed into, the dots shown and the
+  answer passed on;
+- **Welcome, pressed for real** (`pr7os-welcome --press KEY` clicks a key as the mouse does): FONT -> Inter (your
+  account's fonts change and an app started afterwards no longer gets Bebas Neue), BACK UP TO A DRIVE (PR7-BK opens
+  the home backup), SSH -> TURN ON (Plasma's password dialog, the password, Debian's SSH server installed and running),
+  DRIVERS (this machine's graphics card read through lspci);
+- **sleep and wake**: the PC suspends (S3), wakes to the lock screen, unlocks, and Print still opens PR7-Q, the PR7-IS
+  service still runs and apps still start.
+
 ## 0.5.2
 
 - **An encrypted disk by default** (the installer, from the next ISO): "Encrypt system" is ticked from the start, with

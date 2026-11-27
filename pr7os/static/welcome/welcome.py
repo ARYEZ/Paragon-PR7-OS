@@ -12,7 +12,8 @@
     BACKUPS     PR7-BK's ready-made home backup (`pr7-bk --new-home-backup`: home, daily 03:00, caches out)
     UPDATES     PR7-OS Update
 
-`pr7os-welcome --first-run` (the autostart entry) opens it only while "Show at sign-in" is on
+`pr7os-welcome --first-run` (the autostart entry) opens it only while "Show at sign-in" is on; `--press KEY` clicks a
+key once the window shows (the ISO's boot test)
 (~/.config/paragon/welcome.json). Tests replace `Window.start` (what would be started) and set PR7OS_SSH_HELPER /
 PR7OS_DRIVERS_HELPER.
 """
@@ -25,7 +26,7 @@ import socket
 import subprocess
 import sys
 
-from PySide6.QtCore import QProcess, Qt
+from PySide6.QtCore import QProcess, Qt, QTimer
 from PySide6.QtWidgets import (QApplication, QCheckBox, QFrame, QGridLayout, QHBoxLayout, QLabel, QPushButton,
                                QVBoxLayout, QWidget)
 
@@ -401,7 +402,19 @@ def main(argv: list[str]) -> int:
     app = QApplication.instance() or QApplication(sys.argv[:1])
     w = Window()
     w.show()
+    # --press KEY (repeatable): click that key a moment after the window shows, as a mouse would (the ISO's boot test)
+    presses = [argv[i + 1] for i, a in enumerate(argv[:-1]) if a == "--press"]
+    for n, label in enumerate(presses):
+        QTimer.singleShot(1500 + 1000 * n, lambda label=label: press(w, label))
     return app.exec()
+
+
+def press(w: "Window", label: str) -> bool:
+    for b in w.findChildren(QPushButton):
+        if b.text() == label and b.isEnabled():
+            b.click()
+            return True
+    return False
 
 
 if __name__ == "__main__":
