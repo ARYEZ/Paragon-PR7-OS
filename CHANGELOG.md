@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.5.0
+
+A new ISO with everything since 0.4.0, booted and checked in CI like every x.y.0:
+- Go back to the release before (PR7-OS Update), with a Timeshift snapshot before every update (0.4.1).
+- Welcome's FONT (Bebas Neue or Inter for your account) and PR7-AR (startup items) and PR7-UN (uninstaller) on
+  PR7-OS (0.4.2).
+- Welcome's BACKUPS: your home folder every night to a drive, with PR7-BK 0.2.0 (0.4.3).
+The boot test now also starts PR7-AR and PR7-UN in the session.
+
 ## 0.4.3
 
 - **Backups out of the box**: Welcome has a BACKUPS card. BACK UP TO A DRIVE opens PR7-BK (0.2.0) with your home folder
