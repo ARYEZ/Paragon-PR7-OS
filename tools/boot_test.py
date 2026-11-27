@@ -304,13 +304,15 @@ def main(iso: str, out_dir: str) -> int:
         after = m.shot()
         frames.append((m.elapsed(), "PRINT", after))
         after.save(out / "print.png")
-        print_ok = q_running and difference(after, before) > 4      # PR7-Q's picker, or Plasma's one-time question
+        spectacle = m.guest("/bin/sh", ["-c", "pgrep -a spectacle || true"]).strip()
+        print_ok = q_running and difference(after, before) > 4 and not spectacle   # PR7-Q answered, not Spectacle
         m.key("esc")
         time.sleep(2)
         m.key("esc")
         time.sleep(3)
         result.append(f"PR7-Q: {'running' if q_running else 'NOT RUNNING'}; Print: "
-                      f"{'answered' if print_ok else 'NOTHING HAPPENED'}")
+                      + ("SPECTACLE ANSWERED" if spectacle else "answered" if print_ok else "NOTHING HAPPENED"))
+        m.guest("/bin/sh", ["-c", "pkill spectacle || true"])
         # PR7-LN: running from autostart; Alt+Space (a Plasma shortcut, taken from KRunner) opens its launcher
         ln_running = "pr7ln" in m.guest("/bin/sh", ["-c", "pgrep -af 'python -m pr7ln' || true"])
         before = m.shot()
@@ -333,11 +335,14 @@ def main(iso: str, out_dir: str) -> int:
             if app.autostart == "--tray":          # already running in the tray (PR7-Q, PR7-LN): checked by their keys
                 continue
             log = f"/tmp/{app.command}.log"
+            m.key("shift")                         # a key now and then: an idle session locks after 5 minutes
             in_session(m, f"exec {app.command} > {log} 2>&1")
             time.sleep(14)
+            m.key("shift")
             shot = m.shot()
             alive = app.package in m.guest("/bin/sh", ["-c", f"pgrep -af 'python -m {app.package}$' || true"])
-            ok = alive and difference(shot, base) > 3
+            # its window on the screen: not the desktop as it was, not the lock screen, not a blanked display
+            ok = alive and difference(shot, base) > 3 and difference(shot, locked) > 8 and brightness(shot) > 20
             tiles.append((f"PR7-{app.letter} {app.name}", ok, shot))
             if not ok:
                 failed.append(app.letter)

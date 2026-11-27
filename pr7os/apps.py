@@ -102,9 +102,22 @@ APPS = [
 ]
 
 # Plasma's own defaults that PR7-OS changes for its apps (/etc/xdg/kglobalshortcutsrc: what a new account starts with):
-# KRunner keeps Alt+F2 and the Search key, and Alt+Space goes to PR7-LN (Flow Launcher's key).
+# KRunner keeps Alt+F2 and the Search key, and Alt+Space goes to PR7-LN (Flow Launcher's key); Spectacle gives the
+# Print keys to PR7-Q (setup_look.py also diverts Spectacle's kglobalaccel entry, for accounts made before).
 SHORTCUT_DEFAULTS = """[services][org.kde.krunner.desktop]
 _launch=Alt+F2\tSearch
+
+[services][org.kde.spectacle.desktop]
+_launch=none
+FullScreenScreenShot=none
+RectangularRegionScreenShot=none
+ActiveWindowScreenShot=none
+WindowUnderCursorScreenShot=none
+CurrentMonitorScreenShot=none
+OpenWithoutScreenshot=none
+RecordRegion=none
+RecordScreen=none
+RecordWindow=none
 """
 
 LEFT_OUT = {"AR": "Autoruns: Windows' startup places", "UN": "uninstaller: Windows programs",

@@ -91,6 +91,31 @@ def os_release() -> None:
     OS_RELEASE.write_text("".join(f"{k}={v}\n" for k, v in keep.items()), encoding="utf-8")
 
 
+# --------------------------------------------------------------------------- Print belongs to PR7-Q
+SPECTACLE_KEYS = Path("/usr/share/kglobalaccel/org.kde.spectacle.desktop")
+SPECTACLE_OFF = Path("/usr/share/kglobalaccel/org.kde.spectacle.desktop.paragon-off")
+
+
+def spectacle_keys_off() -> None:
+    """Plasma gives an app the shortcuts of its entry in /usr/share/kglobalaccel: Spectacle's claims Print (and Shift /
+    Meta+Print), which are PR7-Q's on PR7-OS. Its entry is diverted aside (kglobalaccel only reads *.desktop there);
+    Spectacle itself stays installed and in the menu."""
+    listed = subprocess.run(["dpkg-divert", "--list", str(SPECTACLE_KEYS)], capture_output=True, text=True).stdout \
+        if shutil.which("dpkg-divert") else ""
+    if "paragon" in listed or not (SPECTACLE_KEYS.exists() or SPECTACLE_KEYS.is_symlink()):
+        return
+    subprocess.run(["dpkg-divert", "--package", "paragon", "--divert", str(SPECTACLE_OFF), "--rename", "--add",
+                    str(SPECTACLE_KEYS)], check=True)
+
+
+def spectacle_keys_on() -> None:
+    if not shutil.which("dpkg-divert"):
+        return
+    listed = subprocess.run(["dpkg-divert", "--list", str(SPECTACLE_KEYS)], capture_output=True, text=True).stdout
+    if "paragon" in listed:
+        subprocess.run(["dpkg-divert", "--package", "paragon", "--rename", "--remove", str(SPECTACLE_KEYS)], check=True)
+
+
 # --------------------------------------------------------------------------- the account picture
 FACE = "usr/share/paragon/face.png"
 DEBIAN_PICTURES = ("usr/share/desktop-base", "usr/share/pixmaps", "usr/share/images/desktop-base")
@@ -254,6 +279,7 @@ def configure(strict: bool) -> None:
     lock = [sys.executable, str(SHARE / "lockscreen.py")] + (["--strict"] if strict else [])
     subprocess.run(lock, check=True)
     os_release()
+    spectacle_keys_off()
     skel_faces()
     faces()
     if shutil.which("plymouth-set-default-theme"):
@@ -267,6 +293,7 @@ def remove() -> None:
     subprocess.run([sys.executable, str(SHARE / "lockscreen.py"), "--restore"], check=False)
     unfaces()
     unskel_faces()
+    spectacle_keys_on()
     if STYLE.exists():
         shutil.rmtree(STYLE)
     for pf2 in GRUB_THEME.glob("*.pf2"):

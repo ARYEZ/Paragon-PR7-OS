@@ -1,5 +1,23 @@
 # Changelog
 
+## 0.4.0
+
+- **Bebas Neue everywhere**: Plasma's fonts, the login and lock screens, the boot splash and boot menu, the installer,
+  Welcome, the updater and every Paragon app (through its launcher; the Windows apps keep Inter). The login password
+  field keeps Inter, terminals and monospaced text keep their fixed-width font. Bebas Neue has capitals only and one
+  weight.
+- **PR7-IS Search** (Ctrl+Alt+Space; its index service starts at sign-in, kept up to date by Linux's change notices),
+  **PR7-LN Launcher** (Alt+Space; Plasma's KRunner keeps Alt+F2 and the Search key) and **PR7-CB Clipboard** (Ctrl+`;
+  Plasma's Klipper feeds its history; choose a clip, then Ctrl+V) join PR7-OS: every Paragon app that works on Linux is
+  here now.
+- **One finish for the whole desktop**: OBSIDIAN / AURORA in any Paragon app switches Plasma's global theme too, and
+  picking a Paragon theme in System Settings switches the apps.
+- **Paragon Welcome** at sign-in (until you switch it off): the finish, the keys, SSH on / off, printers, Steam, updates.
+- **Print belongs to PR7-Q**: Spectacle (still installed, still in the menu) no longer takes the Print keys.
+- Links between the apps work on PR7-OS (Edit in PR7-W, Open in PR7-E ...): the apps find each other's launchers.
+- The boot test checks more for real: no Spectacle on Print, Alt+Space opens PR7-LN, PR7-IS's service runs, and every
+  app's window is photographed in an awake session (a locked or blank screen no longer counts).
+
 ## 0.3.0
 
 A new ISO with everything since 0.2.0 (the update channel, names on the network, printing, security updates, the
