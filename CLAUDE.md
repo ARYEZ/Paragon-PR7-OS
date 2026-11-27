@@ -73,4 +73,4 @@ a live ISO with the Calamares installer. The owner writes Python; explain the wh
 - Behaviour questions: do what Debian and KDE Plasma do; the look is the family's.
 - Tests: `python -m pytest` (offscreen). Never the real settings or system.
 - Releases: bump `__version__` in `pr7os/__init__.py` and add a `## x.y.z` section to CHANGELOG.md, then push: CI
-  publishes once the ISO built and booted.
+  publishes once the packages installed cleanly in Debian 13 (x.y.0 versions: once the ISO built and booted).
