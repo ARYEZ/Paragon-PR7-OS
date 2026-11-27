@@ -33,6 +33,9 @@ def main(argv: list[str]) -> int:
         else:
             say("STEP Looking for the newest release")
             info = u.latest()
+        if not back and u.is_older(info, have):               # an update never takes this PC back
+            say(f"DONE up-to-date {u.current_version(have)}")
+            return 0
         pkgs = u.pending(info["manifest"], have)
         before = os.environ.get("PR7OS_UPDATE_DONE", "")          # what the run before a re-run installed
         logout = before == "logout"

@@ -146,7 +146,7 @@ class Window(QWidget):
 
     def show_found(self, info, have):
         self.info = info
-        self.pkgs = u.pending(info["manifest"], have)
+        self.pkgs = [] if u.is_older(info, have) else u.pending(info["manifest"], have)   # GO BACK does that
         self.notes.setMarkdown(info.get("notes") or "")
         if not self.pkgs:
             self.state = "current"

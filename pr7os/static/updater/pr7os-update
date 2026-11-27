@@ -28,7 +28,8 @@ def check() -> int:
     except u.UpdateError as e:
         print(e)
         return 0                                      # offline: say nothing, try again tomorrow
-    pkgs = u.pending(info["manifest"], u.installed())
+    have = u.installed()
+    pkgs = [] if u.is_older(info, have) else u.pending(info["manifest"], have)      # never offers going back
     if not pkgs or u.skipped() == info["version"]:
         return 0
     done = subprocess.run(["notify-send", "-a", "Paragon PR7-OS", "-i", "pr7os",

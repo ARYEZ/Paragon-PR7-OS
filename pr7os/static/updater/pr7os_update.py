@@ -52,14 +52,43 @@ def fetch(url: str, timeout: float = 30) -> bytes:
         raise UpdateError(f"GitHub can't be reached ({e})") from e
 
 
+def _with_packages() -> list[tuple[tuple, str, dict]]:
+    """Every published release that carries packages (a manifest), as (version key, tag, release); never 0.0.x."""
+    try:
+        rels = json.loads(fetch(api_url("releases?per_page=50")))
+    except ValueError as e:
+        raise UpdateError(f"the releases can't be read ({e})") from e
+    out = []
+    for rel in rels if isinstance(rels, list) else []:
+        tag = rel.get("tag_name", "")
+        names = {a.get("name") for a in rel.get("assets", [])}
+        if rel.get("draft") or rel.get("prerelease") or MANIFEST not in names or not tag.startswith("v"):
+            continue
+        if not tag.startswith("v0.0."):
+            out.append((version_key(tag[1:]), tag, rel))
+    return out
+
+
 def latest() -> dict:
-    """The newest release: {"tag", "version", "notes", "manifest"}."""
+    """The newest release: {"tag", "version", "notes", "manifest"}. The highest version that carries packages, not
+    GitHub's "latest" mark: that's simply the last one published, and a release built more slowly (one with an ISO)
+    can be published after a newer one (0.6.0 after 0.6.2)."""
+    found = _with_packages()
+    if found:
+        _key, tag, rel = max(found, key=lambda x: x[0])
+        return _info(tag, rel)
     try:
         rel = json.loads(fetch(api_url("releases/latest")))
         tag = rel["tag_name"]
     except (ValueError, KeyError) as e:
         raise UpdateError(f"the release's details can't be read ({e})") from e
     return _info(tag, rel)
+
+
+def is_older(info: dict, have: dict[str, str]) -> bool:
+    """Would installing `info` take this PC back? (Updating never does; only GO BACK may.)"""
+    current = current_version(have)
+    return bool(current) and version_key(info["version"]) < version_key(current)
 
 
 def version_key(v: str) -> tuple:
@@ -80,18 +109,7 @@ def _info(tag: str, rel: dict) -> dict:
 
 def previous(current: str) -> dict:
     """The newest release older than `current` that carries packages (Go back): {"tag", "version", ...}."""
-    try:
-        rels = json.loads(fetch(api_url("releases?per_page=50")))
-    except ValueError as e:
-        raise UpdateError(f"the releases can't be read ({e})") from e
-    older = []
-    for rel in rels:
-        tag = rel.get("tag_name", "")
-        names = {a.get("name") for a in rel.get("assets", [])}
-        if rel.get("draft") or rel.get("prerelease") or MANIFEST not in names or not tag.startswith("v"):
-            continue
-        if version_key(tag[1:]) < version_key(current) and not tag.startswith("v0.0."):
-            older.append((version_key(tag[1:]), tag, rel))
+    older = [r for r in _with_packages() if r[0] < version_key(current)]
     if not older:
         raise UpdateError(f"there's no release before {current} to go back to")
     _key, tag, rel = max(older, key=lambda x: x[0])

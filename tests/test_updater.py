@@ -55,7 +55,7 @@ def release(tmp_path):
     (old / "pr7os-update.json").write_text(json.dumps({"version": "9.9.8", "packages": old_pkgs}))
     asset = [{"name": "pr7os-update.json"}]
     (api / "index.html").write_text(json.dumps([          # the releases list (the server ignores ?per_page=50)
-        {"tag_name": TAG, "assets": asset}, {"tag_name": "v9.9.8", "assets": asset},
+        {"tag_name": TAG, "assets": asset, "body": "## 9.9.9\n\n- Better things."}, {"tag_name": "v9.9.8", "assets": asset},
         {"tag_name": "v9.9.7", "assets": []}, {"tag_name": "v0.0.9", "assets": asset}]))
 
     class Quiet(http.server.SimpleHTTPRequestHandler):
@@ -289,3 +289,16 @@ def test_the_window_goes_back(env, tools, tmp_path, monkeypatch, qapp):
     assert w.state == "done" and "Back to Paragon PR7-OS 9.9.8" in w.heading.text()
     assert u.skipped() == VERSION                           # 9.9.9 isn't offered again by the daily check
     w.close()
+
+
+def test_the_newest_version_wins_over_githubs_latest_mark(release, monkeypatch):
+    """A slower release (one with an ISO) published after a newer one gets GitHub's "latest" mark: the updater takes
+    the highest version that carries packages, and an update never takes a PC back."""
+    site = Path(str(release["files"]).split("/ARYEZ/")[0])
+    (site / "repos/ARYEZ/Paragon-PR7-OS/releases/latest").write_text(json.dumps({"tag_name": "v9.9.8", "body": ""}))
+    monkeypatch.setenv("PR7OS_UPDATE_SERVER", release["url"])
+    u = load()
+    assert u.latest()["version"] == VERSION
+    newer = {"paragon-pr7os-look": "10.0.0", "paragon-pr7os-updates": "10.0.0"}
+    assert u.is_older(u.latest(), newer) and not u.is_older(u.latest(), {"paragon-pr7os-look": "9.9.8"})
+    assert not u.is_older(u.latest(), {})

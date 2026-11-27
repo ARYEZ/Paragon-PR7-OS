@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.6.3
+
+- **Updates always go forward**: PR7-OS Update took GitHub's "latest" release, which is only the last one published;
+  a release with an ISO takes an hour to build and could be published after a newer one, and every PC would then have
+  been "updated" back to it. The updater now takes the highest version that carries packages, an update never
+  installs an older version than the one you have (going back is GO BACK's job alone), and CI marks a release "latest"
+  only when nothing newer is out.
+
 ## 0.6.2
 
 - **Steam's games on the NVIDIA driver**: Flatpak apps (Steam from Flathub) don't use the system's NVIDIA libraries but a

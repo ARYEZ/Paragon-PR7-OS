@@ -131,6 +131,20 @@ jobs:
           open("release-notes.md", "w", encoding="utf-8").write(notes + "\n")
           PY
           cat release-notes.md
+      - name: Newest version? (GitHub marks the last release published "latest"; an older one built more slowly mustn't take it)
+        if: env.AUTO_RELEASE == '1' || (github.event_name == 'workflow_dispatch' && inputs.release && steps.version.outputs.iso != 'true')
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh api "repos/${{ github.repository }}/releases?per_page=100" --jq '[.[].tag_name]' > tags.json
+          python - <<'PY'
+          import json, os
+          key = lambda v: tuple(int(x) if x.isdigit() else 0 for x in v.lstrip("v").split("."))
+          mine = key(os.environ["PR7OS_VERSION"])
+          newest = all(mine >= key(t) for t in json.load(open("tags.json")))
+          print("newest" if newest else "an older version than one already out: not marked latest")
+          open(os.environ["GITHUB_ENV"], "a").write(f"MAKE_LATEST={'true' if newest else 'false'}\n")
+          PY
       - name: Release (the packages and the manifest)
         if: env.AUTO_RELEASE == '1' || (github.event_name == 'workflow_dispatch' && inputs.release && steps.version.outputs.iso != 'true')
         uses: softprops/action-gh-release@v2
@@ -142,6 +156,7 @@ jobs:
             debs/*.deb
             debs/pr7os-update.json
           name: Paragon PR7-OS v${{ env.PR7OS_VERSION }}
+          make_latest: ${{ env.MAKE_LATEST || 'true' }}
 
   iso:
     needs: [test, update-test, packages]
@@ -243,10 +258,25 @@ jobs:
         run: |
           gh release upload "v$PR7OS_VERSION" --repo "${{ github.repository }}" --clobber PR7-OS-*.iso* \
             shots/desktop.png shots/login.png shots/boot_menu.png shots/lock_screen.png shots/apps.png
+      - name: Newest version? (GitHub marks the last release published "latest"; an older one built more slowly mustn't take it)
+        if: env.AUTO_RELEASE == '1'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh api "repos/${{ github.repository }}/releases?per_page=100" --jq '[.[].tag_name]' > tags.json
+          python - <<'PY'
+          import json, os
+          key = lambda v: tuple(int(x) if x.isdigit() else 0 for x in v.lstrip("v").split("."))
+          mine = key(os.environ["PR7OS_VERSION"])
+          newest = all(mine >= key(t) for t in json.load(open("tags.json")))
+          print("newest" if newest else "an older version than one already out: not marked latest")
+          open(os.environ["GITHUB_ENV"], "a").write(f"MAKE_LATEST={'true' if newest else 'false'}\n")
+          PY
       - name: Release
         if: env.AUTO_RELEASE == '1'
         uses: softprops/action-gh-release@v2
         with:
+          make_latest: ${{ env.MAKE_LATEST || 'true' }}
           tag_name: v${{ env.PR7OS_VERSION }}
           target_commitish: ${{ github.sha }}
           body_path: release-notes.md
