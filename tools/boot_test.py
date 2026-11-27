@@ -4,7 +4,8 @@
 
 Run 1, UEFI from the ISO (as on a PC): the boot menu, the splash, the desktop the live session logs into by itself.
 Run 2, the ISO's own kernel with live-config's "noautologin": the login screen, then the live password ("live") typed
-in and the desktop again, then Meta+L and unlocking with the password. OUT_DIR gets boot_menu.png, splash.png,
+in and the desktop again, then Meta+L and unlocking with the password, then Print (PR7-Q, started at sign-in, through
+Plasma's shortcut) and every Paragon app started in the real Plasma session (apps.png: each one's window). OUT_DIR gets boot_menu.png, splash.png,
 desktop.png, login.png, desktop_after_login.png, lock_screen.png, unlocked.png,
 timeline.png (every frame, small) and result.txt; the exit code is 1 when a desktop never appeared.
 """
@@ -20,6 +21,9 @@ import time
 from pathlib import Path
 
 from PIL import Image, ImageStat
+
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+from pr7os import apps as family_apps  # noqa: E402
 
 OVMF_CODE = ["/usr/share/OVMF/OVMF_CODE_4M.fd", "/usr/share/OVMF/OVMF_CODE.fd", "/usr/share/ovmf/OVMF.fd"]
 OVMF_VARS = ["/usr/share/OVMF/OVMF_VARS_4M.fd", "/usr/share/OVMF/OVMF_VARS.fd"]
@@ -166,6 +170,29 @@ def timeline(frames: list[tuple[float, str, Image.Image]], out: Path):
     sheet.save(out)
 
 
+def contact_sheet(tiles: list[tuple[str, bool, Image.Image]], out: Path):
+    """Every app's screenshot, small, with its name: started (white) or not (red)."""
+    from PIL import ImageDraw
+    cols, w, h = 4, 480, 300
+    rows = max(1, (len(tiles) + cols - 1) // cols)
+    sheet = Image.new("RGB", (cols * w, rows * (h + 22)), (6, 4, 7))
+    d = ImageDraw.Draw(sheet)
+    for i, (name, ok, img) in enumerate(tiles):
+        x, y = (i % cols) * w, (i // cols) * (h + 22)
+        sheet.paste(img.resize((w, h)), (x, y))
+        d.text((x + 6, y + h + 4), f"{name}: {'started' if ok else 'DID NOT START'}",
+               fill=(232, 232, 234) if ok else (255, 70, 70))
+    sheet.save(out)
+
+
+def in_session(m: Machine, command: str) -> str:
+    """A command as the live user inside their Plasma session (Wayland, their session bus), not waited for."""
+    env = ("XDG_RUNTIME_DIR=/run/user/$U WAYLAND_DISPLAY=wayland-0 DISPLAY=:0 "
+           "DBUS_SESSION_BUS_ADDRESS=unix:path=/run/user/$U/bus XDG_SESSION_TYPE=wayland XDG_CURRENT_DESKTOP=KDE")
+    return m.guest("/bin/sh", ["-c", f"U=$(id -u paragon); runuser -u paragon -- env {env} setsid sh -c "
+                                     f"'{command}' > /dev/null 2>&1 < /dev/null &"])
+
+
 def main(iso: str, out_dir: str) -> int:
     out = Path(out_dir)
     out.mkdir(parents=True, exist_ok=True)
@@ -222,6 +249,7 @@ def main(iso: str, out_dir: str) -> int:
                  "-cdrom", iso], work, "login")
     login_ok = lock_shown = unlocked = packaged = False
     firewall_on = flathub_listed = avahi_on = False
+    print_ok = apps_ok = False
     try:
         while m.elapsed() < 240:
             img = m.shot()
@@ -268,6 +296,45 @@ def main(iso: str, out_dir: str) -> int:
         avahi_on = len(parts) > 2 and parts[2].split()[:1] == ["active"]
         result.append(f"firewall: {'on' if firewall_on else 'OFF'}; Flathub: {'listed' if flathub_listed else 'MISSING'}; "
                       f"avahi: {'running' if avahi_on else 'NOT RUNNING'}")
+        # PR7-Q: started at sign-in (its autostart entry); Print reaches it through Plasma's shortcut (kglobalaccel)
+        q_running = "pr7q" in m.guest("/bin/sh", ["-c", "pgrep -af 'python -m pr7q' || true"])
+        before = m.shot()
+        m.key("print")
+        time.sleep(8)
+        after = m.shot()
+        frames.append((m.elapsed(), "PRINT", after))
+        after.save(out / "print.png")
+        print_ok = q_running and difference(after, before) > 4      # PR7-Q's picker, or Plasma's one-time question
+        m.key("esc")
+        time.sleep(2)
+        m.key("esc")
+        time.sleep(3)
+        result.append(f"PR7-Q: {'running' if q_running else 'NOT RUNNING'}; Print: "
+                      f"{'answered' if print_ok else 'NOTHING HAPPENED'}")
+        # every app in the real Plasma session: still running after a while, and a window on the screen
+        base = m.shot()
+        tiles, failed, notes = [], [], []
+        for app in family_apps.APPS:
+            if app.autostart:                      # already running (PR7-Q, in the tray)
+                continue
+            log = f"/tmp/{app.command}.log"
+            in_session(m, f"exec {app.command} > {log} 2>&1")
+            time.sleep(14)
+            shot = m.shot()
+            alive = app.package in m.guest("/bin/sh", ["-c", f"pgrep -af 'python -m {app.package}$' || true"])
+            ok = alive and difference(shot, base) > 3
+            tiles.append((f"PR7-{app.letter} {app.name}", ok, shot))
+            if not ok:
+                failed.append(app.letter)
+                notes.append(f"== PR7-{app.letter} (alive: {alive})\n" + m.guest("/bin/sh", ["-c", f"tail -n 30 {log}"]))
+            m.guest("/bin/sh", ["-c", f"pkill -f 'python -m {app.package}$'; sleep 2; "
+                                      f"pkill -9 -f 'python -m {app.package}$' || true"])
+            time.sleep(3)
+        contact_sheet(tiles, out / "apps.png")
+        (out / "apps.txt").write_text("\n".join(notes) or "every app started\n")
+        apps_ok = bool(tiles) and not failed
+        result.append(f"apps: {len(tiles) - len(failed)} of {len(tiles)} started"
+                      + (f" (not: {', '.join('PR7-' + f for f in failed)})" if failed else ""))
         (out / "journal.txt").write_text(m.guest("/usr/bin/journalctl", ["-b", "--no-pager", "-o", "short-monotonic"], 120))
         (out / "lockscreen-files.txt").write_text(m.guest("/bin/sh", ["-c",
             "ls -la /usr/share/plasma/shells/org.kde.plasma.desktop/contents/lockscreen/; "
@@ -283,7 +350,7 @@ def main(iso: str, out_dir: str) -> int:
     (out / "result.txt").write_text("\n".join(result) + "\n")
     print("\n".join(result))
     return 0 if (desktop_ok and login_ok and lock_shown and unlocked and packaged and firewall_on
-                  and flathub_listed and avahi_on) else 1
+                  and flathub_listed and avahi_on and print_ok and apps_ok) else 1
 
 
 if __name__ == "__main__":

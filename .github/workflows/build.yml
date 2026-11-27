@@ -242,7 +242,7 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           gh release upload "v$PR7OS_VERSION" --repo "${{ github.repository }}" --clobber PR7-OS-*.iso* \
-            shots/desktop.png shots/login.png shots/boot_menu.png shots/lock_screen.png
+            shots/desktop.png shots/login.png shots/boot_menu.png shots/lock_screen.png shots/apps.png
       - name: Release
         if: env.AUTO_RELEASE == '1'
         uses: softprops/action-gh-release@v2
@@ -260,4 +260,5 @@ jobs:
             shots/login.png
             shots/boot_menu.png
             shots/lock_screen.png
+            shots/apps.png
           name: Paragon PR7-OS v${{ env.PR7OS_VERSION }}

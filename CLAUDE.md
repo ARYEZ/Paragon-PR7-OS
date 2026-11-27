@@ -60,7 +60,9 @@ a live ISO with the Calamares installer. The owner writes Python; explain the wh
   (packages + manifest, no ISO; the notes link the newest release that has one). The **iso** job runs only for x.y.0
   versions, `v*` tags or Run workflow with "iso": `live/build.sh` (calls packages.sh), `tools/boot_test.py` boots it in
   QEMU/KVM (UEFI: boot menu, splash, desktop; direct kernel with `live-config.noautologin`: login screen, password
-  "live", desktop, lock / unlock, firewall, Flathub, avahi) and pushes the screenshots to the **ci-boot-screens** branch
+  "live", desktop, lock / unlock, firewall, Flathub, avahi, Print -> PR7-Q (running from autostart, the screen changes),
+  every app started in the session with `in_session` (runuser + the user's Wayland / bus env; alive and a window:
+  `apps.png`, `apps.txt` with failures' logs)) and pushes the screenshots to the **ci-boot-screens** branch
   (CI only; fetch it to look: release downloads are blocked from the session). An x.y.0 is published by the iso job
   with its ISO (split into parts over 2 GB); a hand-started ISO of a released version is added to that release.
   **0.0.x versions never publish**.

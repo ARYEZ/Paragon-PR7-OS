@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.3.0
+
+A new ISO with everything since 0.2.0 (the update channel, names on the network, printing, security updates, the
+firewall, Flatpak and Flathub, games, the Paragon account picture, PR7-Q Screenshots), checked in a real Plasma
+session before it was published:
+- the boot test now presses Print and sees PR7-Q answer through Plasma's shortcut, and starts every Paragon app in the
+  live session and photographs its window (`apps.png` in this release);
+- installed machines get the same through PR7-OS Update (nothing new to install since 0.2.3 apart from the version).
+
 ## 0.2.3
 
 - **PR7-Q Screenshots joins PR7-OS** (PR7-Q 0.4.0, which now runs on Plasma's Wayland desktop): Print captures a
