@@ -43,9 +43,10 @@ def test_the_keys_start_what_they_say(welcome):
     mod, w, tmp = welcome
     from PySide6.QtWidgets import QPushButton
     keys = {b.text(): b for b in w.findChildren(QPushButton)}
-    for text in ("ADD A PRINTER", "GET STEAM", "CHECK FOR UPDATES"):
+    for text in ("ADD A PRINTER", "GET STEAM", "BACK UP TO A DRIVE", "CHECK FOR UPDATES"):
         keys[text].click()
-    assert w.started == [["systemsettings", "kcm_printer_manager"], ["pr7os-steam"], ["pr7os-update"]]
+    assert w.started == [["systemsettings", "kcm_printer_manager"], ["pr7os-steam"],
+                         ["pr7-bk", "--new-home-backup"], ["pr7os-update"]]
 
 
 def test_ssh_on_and_off(welcome):

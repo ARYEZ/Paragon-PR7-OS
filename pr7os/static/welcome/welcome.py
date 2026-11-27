@@ -8,6 +8,7 @@
     SSH         on / off through pr7os-ssh-helper (pkexec: your password once); shows how to reach this PC
     PRINTERS    Plasma's printer settings
     STEAM       pr7os-steam (Discover on Steam's Flathub page, or Steam itself)
+    BACKUPS     PR7-BK's ready-made home backup (`pr7-bk --new-home-backup`: home, daily 03:00, caches out)
     UPDATES     PR7-OS Update
 
 `pr7os-welcome --first-run` (the autostart entry) opens it only while "Show at sign-in" is on
@@ -229,6 +230,8 @@ class Window(QWidget):
                 ("PRINTERS", "Network printers are found by themselves; add one here.", "ADD A PRINTER",
                  ["systemsettings", "kcm_printer_manager"]),
                 ("STEAM", "Steam from Flathub, with its own libraries.", "GET STEAM", ["pr7os-steam"]),
+                ("BACKUPS", "Your home folder every night at 03:00, to a drive you choose (PR7-BK).",
+                 "BACK UP TO A DRIVE", ["pr7-bk", "--new-home-backup"]),
                 ("UPDATES", "PR7-OS checks once a day; look now, or go back to the release before.", "CHECK FOR UPDATES",
                  ["pr7os-update"])):
             box, row, _ = card(label, text)

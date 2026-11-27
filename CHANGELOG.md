@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.4.3
+
+- **Backups out of the box**: Welcome has a BACKUPS card. BACK UP TO A DRIVE opens PR7-BK (0.2.0) with your home folder
+  already chosen, every night at 03:00, caches and the Trash left out; you pick the drive and the password. The
+  schedule is a systemd user timer, so a backup missed while the PC was off runs when it's next on.
+
 ## 0.4.2
 
 - **PR7-AR Startup** and **PR7-UN Uninstaller** join PR7-OS (both now run on Linux): every Paragon app is here but PR7-U
