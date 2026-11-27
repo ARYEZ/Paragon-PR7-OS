@@ -105,7 +105,7 @@ def has_band(img: Image.Image) -> bool:
     """The boot menu's selected entry: a wide run of the family's red / orange across the middle of the screen."""
     small = img.resize((192, 108))
     hits = 0
-    for y in range(30, 70):
+    for y in range(20, 92):
         run = sum(1 for x in range(40, 152) if (lambda p: p[0] > 190 and p[1] < 140 and p[2] < 90)(small.getpixel((x, y))))
         hits = max(hits, run)
     return hits > 60
@@ -144,7 +144,7 @@ def main(iso: str, out_dir: str) -> int:
     menu_since = None
     last = None
     try:
-        while m.elapsed() < 420:
+        while m.elapsed() < 240:
             img = m.shot()
             t = m.elapsed()
             frames.append((t, "UEFI", img))
@@ -160,7 +160,8 @@ def main(iso: str, out_dir: str) -> int:
                 splash = img
                 img.save(out / "splash.png")
                 result.append(f"splash at {t:.0f} s")
-            last = img
+            if brightness(img) > 20:
+                last = img           # the last lit frame: an idle desktop locks and blanks after 5 minutes
             time.sleep(4 if t < 60 else 15)
     finally:
         m.stop()
@@ -173,7 +174,7 @@ def main(iso: str, out_dir: str) -> int:
     for f in ("vmlinuz", "initrd.img"):
         subprocess.run(["xorriso", "-osirrox", "on", "-indev", iso, "-extract", f"/live/{f}", str(work / f)],
                        check=True, capture_output=True)
-    append = ("boot=live components quiet splash username=paragon hostname=pr7os locales=en_US.UTF-8 "
+    append = ("boot=live components quiet splash username=paragon user-fullname=Paragon hostname=pr7os locales=en_US.UTF-8 "
               "keyboard-layouts=us live-config.noautologin console=ttyS0,115200 console=tty0")
     m = Machine(["-kernel", str(work / "vmlinuz"), "-initrd", str(work / "initrd.img"), "-append", append,
                  "-cdrom", iso], work, "login")

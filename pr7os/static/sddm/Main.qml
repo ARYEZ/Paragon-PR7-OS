@@ -38,7 +38,8 @@ Rectangle {
             width: 1; height: 1
             property string login: model.name
             property string shown: model.realName && model.realName.length ? model.realName : model.name
-            property string picture: model.icon ? model.icon : ""
+            // Debian's stock face (sddm/faces) is no picture of the person: the first letter shows instead
+            property string picture: model.icon && String(model.icon).indexOf("/sddm/faces/") < 0 ? model.icon : ""
         }
     }
     ListView {

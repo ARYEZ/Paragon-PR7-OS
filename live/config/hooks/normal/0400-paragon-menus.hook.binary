@@ -1,0 +1,10 @@
+#!/bin/sh
+# The ISO's own boot menus name the system: live-build writes "Live system (amd64)" into them itself (not from the
+# templates), so they're renamed here, in the finished ISO tree, just before the image is made.
+set -e
+for f in boot/grub/grub.cfg boot/grub/*.cfg isolinux/*.cfg; do
+    [ -f "$f" ] || continue
+    sed -i -e 's/Live system (amd64 fail-safe mode)/Paragon PR7-OS (safe graphics)/g' \
+           -e 's/Live system (amd64)/Paragon PR7-OS/g' -e 's/Live system/Paragon PR7-OS/g' "$f"
+done
+grep -h "menuentry\|label" boot/grub/grub.cfg 2>/dev/null | head -5 || true

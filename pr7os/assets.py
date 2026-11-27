@@ -445,17 +445,17 @@ terminal-font: "Inter Regular 16"
 terminal-box: "terminal_*.png"
 
 + boot_menu {
-    left = 50%-402
-    top = 384
-    width = 804
-    height = 260
+    left = 29%
+    top = 35%
+    width = 42%
+    height = 25%
     item_font = "Inter Regular 18"
     selected_item_font = "Inter SemiBold 18"
     item_color = "#C9C5C8"
     selected_item_color = "#FFFFFF"
-    item_height = 52
+    item_height = 48
     item_padding = 22
-    item_spacing = 12
+    item_spacing = 10
     icon_width = 0
     icon_height = 0
     item_icon_space = 0
@@ -465,7 +465,7 @@ terminal-box: "terminal_*.png"
 
 + label {
     left = 0
-    top = 700
+    top = 66%
     width = 100%
     align = "center"
     color = "#8A8A92"
@@ -476,7 +476,7 @@ terminal-box: "terminal_*.png"
 + label {
     id = "__timeout__"
     left = 0
-    top = 736
+    top = 71%
     width = 100%
     align = "center"
     color = "#B9B5B8"

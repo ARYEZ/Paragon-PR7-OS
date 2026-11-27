@@ -13,7 +13,7 @@ sys.path.insert(0, str(ROOT / "tools"))
 
 
 def test_hooks_and_scripts_are_executable_shell():
-    for f in list((LIVE / "config/hooks/normal").glob("*.hook.chroot")) + [LIVE / "build.sh"] + list((LIVE / "auto").iterdir()):
+    for f in list((LIVE / "config/hooks/normal").glob("*.hook.*")) + [LIVE / "build.sh"] + list((LIVE / "auto").iterdir()):
         assert os.access(f, os.X_OK), f.name
         assert f.read_text().startswith("#!/bin/"), f.name
         assert subprocess.run(["bash", "-n", str(f)]).returncode == 0, f.name      # syntax
@@ -81,3 +81,14 @@ def test_first_boot_findings_stay_fixed():
     assert "the live boot menu isn't themed" in build
     system = (LIVE / "config/hooks/normal/0300-paragon-system.hook.chroot").read_text()
     assert "apt-get purge -y plasma-welcome" in system and "Install Paragon PR7-OS" in system
+
+
+def test_second_boot_findings_stay_fixed(built):
+    root, _ = built
+    theme = (root / "usr/share/grub/themes/paragon/theme.txt").read_text()
+    menu = theme[theme.index("+ boot_menu"):theme.index("}")]
+    assert "top = 35%" in menu and "left = 29%" in menu           # proportions: the picture scales with the screen
+    assert "top = 66%" in theme and "top = 71%" in theme             # the hint and the countdown don't overlap
+    assert "/sddm/faces/" in (root / "usr/share/sddm/themes/paragon/Main.qml").read_text()
+    menus = (LIVE / "config/hooks/normal/0400-paragon-menus.hook.binary").read_text()
+    assert "Paragon PR7-OS (safe graphics)" in menus
