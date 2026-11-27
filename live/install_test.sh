@@ -48,3 +48,7 @@ tail -n 1 /tmp/drivers.log | grep -qx 'DONE nvidia-driver (simulated)' || fail "
 grep -q '^Inst firmware-iwlwifi' /tmp/drivers.log || fail "the Wi-Fi firmware wasn't going to be installed"
 grep -q '^Inst nvidia-kernel-dkms' /tmp/drivers.log || fail "the driver's kernel module wasn't going to be built"
 echo "drivers helper: firmware and nvidia-driver resolve in Debian 13"
+# Welcome's REMOTE DESKTOP: KRdp's settings page (what SET UP opens) is there, and the firewall's 3389 rules are home-only
+find /usr/lib -path '*kcms*' -name '*krdp*' | grep -q . || fail "KRdp's settings page isn't installed"
+[ -f /var/lib/paragon/remote-desktop-allowed ] || fail "the remote desktop firewall rule wasn't added"
+echo "remote desktop: KRdp installed, firewall rule added"

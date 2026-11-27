@@ -439,6 +439,15 @@ def main(iso: str, out_dir: str) -> int:
         if not ssh_ok:
             (out / "welcome.log").write_text(m.guest("/bin/sh", ["-c", "cat /tmp/welcome.log; journalctl -b --no-pager -o cat | grep -iE 'polkit|pkexec|ssh' | tail -n 40"]))
         result.append(f"Welcome SSH: {'on (password asked, server running)' if ssh_ok else 'NOT ON'}")
+        # REMOTE DESKTOP: SET UP opens Plasma's KRdp page; the firewall lets 3389 in from home networks only
+        shot = welcome("SET UP", 12)
+        shot.save(out / "welcome_remote.png")
+        kcm = m.guest("/bin/sh", ["-c", "pgrep -af systemsettings || true"])
+        m.guest("/bin/sh", ["-c", "pkill systemsettings || true"])
+        rules = m.guest("/usr/sbin/ufw", ["status"])
+        rdp_rules = [r for r in rules.splitlines() if r.startswith("3389")]
+        remote_ok = "kcm_krdpserver" in kcm and len(rdp_rules) == 3 and all("Anywhere" not in r for r in rdp_rules)
+        result.append(f"Welcome REMOTE DESKTOP: {'settings opened, port 3389 home networks only' if remote_ok else 'NOT RIGHT (' + kcm.strip()[:60] + ' / ' + ' | '.join(rdp_rules)[:120] + ')'}")
         # DRIVERS: the helper reads this machine's graphics card (QEMU's) through lspci
         drivers = m.guest("/usr/libexec/paragon/pr7os-drivers-helper", ["state"])
         try:
@@ -448,7 +457,7 @@ def main(iso: str, out_dir: str) -> int:
         (out / "drivers.json").write_text(drivers)
         result.append(f"Welcome DRIVERS: {'card found' if drivers_ok else 'NO CARD FOUND'}")
         m.guest("/bin/sh", ["-c", "pkill -f 'welcome/welcome.py' || true"])
-        welcome_ok = font_ok and backups_ok and ssh_ok and drivers_ok
+        welcome_ok = font_ok and backups_ok and ssh_ok and drivers_ok and remote_ok
         # ---- sleep and wake: Plasma locks on the way down, the PC wakes to the lock screen, the password brings the
         # session back, and what runs in it still answers (Print -> PR7-Q, the PR7-IS service, a new app)
         m.guest("/bin/sh", ["-c", "(sleep 2; systemctl suspend) > /dev/null 2>&1 &"])

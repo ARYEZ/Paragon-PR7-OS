@@ -68,6 +68,10 @@ a live ISO with the Calamares installer. The owner writes Python; explain the wh
   (Bebas Neue + fonts.conf into the initramfs: Plymouth's Image.Text draws nothing without them). Boot test: hook 0300's
   init-premount `paragon-asktest` (only with paragon.asktest) asks with plymouth ask-for-password, marks ttyS0; the
   test screenshots it, types, checks the orange dots and /run/pr7os-asktest.
+- **Remote desktop** (0.6.1): the system package Depends on krdp; `setup_system.remote_desktop` adds ufw 3389/tcp from
+  10/8, 172.16/12, 192.168/16 once (marker /var/lib/paragon/remote-desktop-allowed; never from anywhere); Welcome's
+  REMOTE DESKTOP card (`remote_view`, `pgrep -x krdpserver`) and SET UP = `systemsettings kcm_krdpserver` (KRdp keeps its
+  password in Plasma's wallet and makes its own certificate: the KCM does it, not us).
 - **The lock screen** is Plasma's shell package (org.kde.plasma.desktop/contents/lockscreen), not the global theme,
   and its QML unlocks the session: `pr7os/static/lockscreen.py` (run by hook 0200) only restyles it with anchored edits
   (ParagonClock instead of Breeze's Clock; the password field's / unlock key's backgrounds; UserDelegate's gradient

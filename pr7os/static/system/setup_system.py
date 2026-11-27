@@ -7,6 +7,9 @@
   and KDE Connect (1714-1764); ufw's own rules already let mDNS (avahi: name.local, network printers) through.
   Switched on at once on a running system; in the ISO's build it's marked on and starts at boot. Done only the
   first time (a marker in /var/lib/paragon): if you change or switch off the firewall later, updates leave it alone.
+- Remote desktop (KRdp, Plasma's RDP server: Windows' Remote Desktop Connection), once, on its own marker so installed
+  systems get it too: port 3389 from home networks only (10/8, 172.16/12, 192.168/16), never from the internet, which
+  RDP is a favourite target on. Nothing listens there until you set it up (Welcome's REMOTE DESKTOP).
 - Flathub as a Flatpak source (so Discover offers its apps, Steam included), every time: `--if-not-exists` makes
   that a no-op once it's there; without a network it's tried again on the next update.
 Standard library only (Debian's python3). PR7OS_ROOT, PR7OS_UFW and PR7OS_FLATPAK point the tests elsewhere.
@@ -65,6 +68,26 @@ def firewall() -> str:
     return "on"
 
 
+HOME_NETWORKS = ["10.0.0.0/8", "172.16.0.0/12", "192.168.0.0/16"]
+
+
+def remote_desktop() -> str:
+    marker = root() / "var/lib/paragon/remote-desktop-allowed"
+    if marker.exists():
+        return "left as you set it"
+    ufw = tool("PR7OS_UFW", "ufw")
+    if not ufw:
+        return "ufw isn't installed"
+    for net in HOME_NETWORKS:
+        rule = ["allow", "from", net, "to", "any", "port", "3389", "proto", "tcp", "comment", "Remote desktop (home)"]
+        if subprocess.run([ufw, *rule], stdout=subprocess.DEVNULL).returncode:
+            return f"ufw {' '.join(rule)} failed; tried again on the next update"
+    marker.parent.mkdir(parents=True, exist_ok=True)
+    marker.write_text("PR7-OS allowed remote desktop from home networks once; it's yours to change now.\n",
+                      encoding="utf-8")
+    return "allowed from home networks"
+
+
 def flathub() -> str:
     flatpak = tool("PR7OS_FLATPAK", "flatpak")
     if not flatpak:
@@ -79,6 +102,7 @@ def main(argv: list[str]) -> int:
         print(__doc__)
         return 2
     print(f"PR7-OS firewall: {firewall()}")
+    print(f"PR7-OS remote desktop: {remote_desktop()}")
     print(f"PR7-OS Flathub: {flathub()}")
     return 0                                    # never fail the package: each step is retried on the next update
 

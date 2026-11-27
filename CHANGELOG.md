@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.6.1
+
+- **Remote desktop from Windows**: Plasma's own RDP server (KRdp) is installed, and Welcome has a REMOTE DESKTOP card:
+  SET UP opens its settings (choose a user name and password, switch it on), and the card then says what to type in
+  Windows' Remote Desktop Connection (this PC's name.local, and its home-network address). Nothing to install on
+  Windows. The firewall lets port 3389 in from home networks only (10.x, 172.16-31.x, 192.168.x), never from the
+  internet, where RDP is a favourite target; added once on its own, so installed PCs get it too and keep your changes.
+- CI checks KRdp installs in a clean Debian 13; the boot test presses SET UP and checks the firewall's three rules.
+
 ## 0.6.0
 
 A new ISO with 0.5.1 (DRIVERS) and 0.5.2 (an encrypted disk by default), and a boot test that now also checks:

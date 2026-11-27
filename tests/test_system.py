@@ -170,3 +170,16 @@ esac
     assert (keys / "org.kde.krunner.desktop").read_text() == ours
     mod.krunner_keys_back()
     assert (keys / "org.kde.krunner.desktop").is_symlink() and "Alt+Space" in (keys / "org.kde.krunner.desktop").read_text()
+
+
+def test_remote_desktop_from_home_networks_only_once(system):
+    mod, root, log = system
+    (root / "var/lib/paragon").mkdir(parents=True)
+    (root / "var/lib/paragon/firewall-configured").write_text("yours\n")      # an installed PC: firewall set up long ago
+    mod.main(["configure"])
+    calls = [c for c in log.read_text().splitlines() if c.startswith("ufw")]
+    assert calls == [f"ufw allow from {net} to any port 3389 proto tcp comment Remote desktop (home)"
+                     for net in ("10.0.0.0/8", "172.16.0.0/12", "192.168.0.0/16")]   # never "allow 3389" from anywhere
+    log.write_text("")
+    mod.main(["configure"])                                                     # the next update: left to you
+    assert not any(c.startswith("ufw") for c in log.read_text().splitlines())

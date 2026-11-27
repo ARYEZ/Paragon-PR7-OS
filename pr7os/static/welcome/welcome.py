@@ -6,6 +6,8 @@
                 and finish_sync.py takes Plasma's global theme along
     KEYS        Print (PR7-Q), Alt+Space (PR7-LN), Ctrl+Alt+Space (PR7-IS)
     SSH         on / off through pr7os-ssh-helper (pkexec: your password once); shows how to reach this PC
+    REMOTE      Plasma's remote desktop (KRdp): this PC from Windows' Remote Desktop Connection; SET UP opens its
+                settings page (your user name and password there); the firewall lets home networks in (PR7-OS's setup)
     DRIVERS     pr7os-drivers-helper: firmware for any PC, the NVIDIA driver for an NVIDIA card (and Secure Boot's key)
     PRINTERS    Plasma's printer settings
     STEAM       pr7os-steam (Discover on Steam's Flathub page, or Steam itself)
@@ -145,6 +147,33 @@ def ssh_state() -> str:
         return "off"
 
 
+def remote_running() -> bool:
+    """Is Plasma's remote desktop server (krdpserver) running for this account?"""
+    try:
+        return subprocess.run(["pgrep", "-u", str(os.getuid()), "-x", "krdpserver"], capture_output=True,
+                              timeout=5).returncode == 0
+    except (OSError, subprocess.SubprocessError):
+        return False
+
+
+def home_address() -> str:
+    """This PC's address on the home network (what Windows can always connect to, .local or not)."""
+    try:
+        with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as s:
+            s.connect(("192.0.2.1", 9))            # no packet is sent: this only picks the outgoing address
+            return s.getsockname()[0]
+    except OSError:
+        return ""
+
+
+def remote_view(running: bool, host: str, address: str) -> str:
+    if not running:
+        return ("Off: SET UP, choose a user name and password and switch it on; then, from Windows' Remote Desktop "
+                "Connection, this PC's desktop.")
+    where = f"{host}.local" + (f" (or {address})" if address and not address.startswith("127.") else "")
+    return f"On: in Windows' Remote Desktop Connection, computer {where}, with the user name and password you set."
+
+
 def drivers_helper() -> list[str]:
     if os.environ.get("PR7OS_DRIVERS_HELPER"):
         return shlex.split(os.environ["PR7OS_DRIVERS_HELPER"])
@@ -261,6 +290,13 @@ class Window(QWidget):
         self.ssh = ssh_state()
         self.show_ssh()
 
+        box, row, self.remote_text = card("REMOTE DESKTOP", "")
+        b = QPushButton("SET UP")
+        b.clicked.connect(lambda: self.start(["systemsettings", "kcm_krdpserver"]))
+        row.addWidget(b)
+        lay.addWidget(box)
+        self.show_remote()
+
         box, row, self.drivers_text = card("DRIVERS", "")
         self.drivers_key = QPushButton("")
         self.drivers_key.clicked.connect(self.install_drivers)
@@ -359,6 +395,9 @@ class Window(QWidget):
                 self.mok = rest.strip()
             if word != "MOK":                        # the password is shown once, on the card; never kept elsewhere
                 self.last_line = line
+
+    def show_remote(self) -> None:
+        self.remote_text.setText(remote_view(remote_running(), socket.gethostname(), home_address()))
 
     def show_drivers(self, note: str = "") -> None:
         text, key = drivers_view(drivers_state())

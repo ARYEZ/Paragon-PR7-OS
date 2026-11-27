@@ -43,10 +43,10 @@ def test_the_keys_start_what_they_say(welcome):
     mod, w, tmp = welcome
     from PySide6.QtWidgets import QPushButton
     keys = {b.text(): b for b in w.findChildren(QPushButton)}
-    for text in ("ADD A PRINTER", "GET STEAM", "BACK UP TO A DRIVE", "CHECK FOR UPDATES"):
+    for text in ("SET UP", "ADD A PRINTER", "GET STEAM", "BACK UP TO A DRIVE", "CHECK FOR UPDATES"):
         keys[text].click()
-    assert w.started == [["systemsettings", "kcm_printer_manager"], ["pr7os-steam"],
-                         ["pr7-bk", "--new-home-backup"], ["pr7os-update"]]
+    assert w.started == [["systemsettings", "kcm_krdpserver"], ["systemsettings", "kcm_printer_manager"],
+                         ["pr7os-steam"], ["pr7-bk", "--new-home-backup"], ["pr7os-update"]]
 
 
 def test_ssh_on_and_off(welcome):
@@ -127,3 +127,11 @@ def test_press_clicks_a_key_like_a_mouse(welcome):
     mod, w, tmp = welcome
     assert mod.press(w, "GET STEAM") and w.started[-1] == ["pr7os-steam"]
     assert not mod.press(w, "NO SUCH KEY")
+
+
+def test_remote_desktop_words(welcome):
+    mod, w, tmp = welcome
+    assert mod.remote_view(False, "pr7os", "192.168.1.20").startswith("Off: SET UP")
+    on = mod.remote_view(True, "pr7os", "192.168.1.20")
+    assert "computer pr7os.local (or 192.168.1.20)" in on
+    assert "(or" not in mod.remote_view(True, "pr7os", "127.0.0.1")          # offline: only the name
