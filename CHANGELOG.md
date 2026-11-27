@@ -9,11 +9,13 @@ through Discover as before.
 
 - **Already installed PR7-OS 0.1.x?** Get the updater once, in a terminal (Konsole or PR7-TM):
 
-      wget -O /tmp/pr7os-updates.deb https://github.com/ARYEZ/Paragon-PR7-OS/releases/latest/download/paragon-pr7os-updates.deb
+      python3 -c "import urllib.request; urllib.request.urlretrieve('https://github.com/ARYEZ/Paragon-PR7-OS/releases/latest/download/paragon-pr7os-updates.deb', '/tmp/pr7os-updates.deb')"
       sudo apt install /tmp/pr7os-updates.deb
       pr7os-update
 
-  then UPDATE, and log out and back in. From then on, updates arrive by themselves.
+  then UPDATE, and log out and back in. From then on, updates arrive by themselves. (PR7-OS has no wget: Python is
+  always there. Over SSH, with no screen for the window, run `sudo /usr/libexec/paragon/pr7os-update-helper` instead
+  of `pr7os-update`.)
 - The lock screen in the login screen's look, for real this time: 0.1.1's showed KDE's built-in emergency lock screen on
   KDE's purple wallpaper (Plasma's password block imports an old QtQuick version that rejected the gradient). Its
   wallpaper is now Paragon's too.
