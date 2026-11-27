@@ -321,7 +321,9 @@ def main(iso: str, out_dir: str) -> int:
         after = m.shot()
         frames.append((m.elapsed(), "ALT+SPACE", after))
         after.save(out / "launcher.png")
-        launcher_ok = ln_running and difference(after, before) > 3
+        # the proof: Plasma started PR7-LN's shortcut action (the launcher is a thin bar: the screen changes little)
+        started = m.guest("/bin/sh", ["-c", "journalctl -b --no-pager -o cat | grep -c 'Started app-pr7.x2dln@' || true"])
+        launcher_ok = ln_running and started.strip() not in ("", "0") and difference(after, before) > 0.5
         m.key("esc")
         time.sleep(2)
         is_running = "pr7is" in m.guest("/bin/sh", ["-c", "pgrep -af 'python -m pr7is --index-service' || true"])
