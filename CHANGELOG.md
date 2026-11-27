@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.6.2
+
+- **Steam's games on the NVIDIA driver**: Flatpak apps (Steam from Flathub) don't use the system's NVIDIA libraries but a
+  Flathub extension built for the exact driver version; without it games fall back to slow software rendering.
+  pr7os-flatpak-gl.service runs at every start and, once per driver version, has Flatpak install the matching one:
+  after the restart that follows DRIVERS, and again whenever Debian updates the driver. It does nothing without the
+  NVIDIA driver running or without Flatpak runtimes, and tries again at the next start when offline.
+
 ## 0.6.1
 
 - **Remote desktop from Windows**: Plasma's own RDP server (KRdp) is installed, and Welcome has a REMOTE DESKTOP card:

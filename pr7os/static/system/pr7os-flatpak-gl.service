@@ -1,0 +1,12 @@
+[Unit]
+Description=Paragon PR7-OS: Flatpak's NVIDIA libraries for the running driver (Steam's games)
+Wants=network-online.target
+After=network-online.target
+
+[Service]
+Type=oneshot
+ExecStart=/usr/libexec/paragon/pr7os-flatpak-gl
+Nice=10
+
+[Install]
+WantedBy=multi-user.target

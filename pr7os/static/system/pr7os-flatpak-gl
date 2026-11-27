@@ -1,0 +1,68 @@
+#!/usr/bin/python3
+"""Steam (and every Flatpak app) on the NVIDIA driver: Flatpak apps don't use the system's NVIDIA libraries but a
+Flathub extension built for the exact driver version (org.freedesktop.Platform.GL.nvidia-550-163-01 for 550.163.01).
+Without the matching one, games fall back to software rendering, slowly. Flatpak installs it during `flatpak update`,
+but only while that driver is running: after the restart that follows DRIVERS, and again after Debian updates the
+driver. This runs at every start (pr7os-flatpak-gl.service) and does that, once per driver version.
+
+Nothing happens without the NVIDIA driver running, or without Flatpak runtimes that would use it. A failure (no
+network yet) is tried again at the next start. PR7OS_ROOT points /sys and /var elsewhere (tests)."""
+import os
+import subprocess
+import sys
+
+ROOT = os.environ.get("PR7OS_ROOT", "/")
+PREFIX = "org.freedesktop.Platform.GL.nvidia-"
+
+
+def path(p: str) -> str:
+    return os.path.join(ROOT, p.lstrip("/"))
+
+
+def flatpak(*args: str) -> subprocess.CompletedProcess:
+    return subprocess.run(["flatpak", *args], capture_output=True, text=True)
+
+
+def main() -> int:
+    version = ""
+    for name in ("nvidia", "nvidia_current"):            # Debian names the module's file nvidia-current
+        try:
+            with open(path(f"/sys/module/{name}/version"), encoding="utf-8") as fh:
+                version = fh.read().strip()
+                break
+        except OSError:
+            pass
+    if not version:
+        print("no NVIDIA driver running: nothing to do")
+        return 0
+    want = PREFIX + version.replace(".", "-")
+    stamp = path("/var/lib/paragon/flatpak-gl-nvidia")
+    try:
+        with open(stamp, encoding="utf-8") as fh:
+            done = fh.read().strip() == version
+    except OSError:
+        done = False
+    installed = flatpak("info", "--system", want).returncode == 0
+    if done and installed:
+        return 0
+    runtimes = flatpak("list", "--system", "--runtime", "--columns=application").stdout.split()
+    if not any(r.startswith("org.freedesktop.Platform") and not r.startswith(PREFIX) for r in runtimes):
+        print("no Flatpak runtimes that use graphics yet: nothing to do")
+        return 0
+    if not installed:
+        print(f"installing {want} for NVIDIA {version}")
+        flatpak("update", "--system", "-y", "--noninteractive")           # Flatpak picks the driver's extension itself
+        if flatpak("info", "--system", want).returncode != 0:              # an older Flatpak: name it
+            flatpak("install", "--system", "-y", "--noninteractive", "flathub", want)
+        if flatpak("info", "--system", want).returncode != 0:
+            print(f"{want} isn't installed yet (offline?): tried again at the next start")
+            return 0
+    os.makedirs(os.path.dirname(stamp), exist_ok=True)
+    with open(stamp, "w", encoding="utf-8") as fh:
+        fh.write(version + "\n")
+    print(f"{want} installed")
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

@@ -72,6 +72,9 @@ a live ISO with the Calamares installer. The owner writes Python; explain the wh
   10/8, 172.16/12, 192.168/16 once (marker /var/lib/paragon/remote-desktop-allowed; never from anywhere); Welcome's
   REMOTE DESKTOP card (`remote_view`, `pgrep -x krdpserver`) and SET UP = `systemsettings kcm_krdpserver` (KRdp keeps its
   password in Plasma's wallet and makes its own certificate: the KCM does it, not us).
+- **Flatpak NVIDIA libraries** (0.6.2): `static/system/pr7os-flatpak-gl` + .service (system package; setup_system
+  enables it): /sys/module/{nvidia,nvidia_current}/version -> org.freedesktop.Platform.GL.nvidia-<dashes>; flatpak
+  update (Flatpak picks it), else install it by name; stamp /var/lib/paragon/flatpak-gl-nvidia. PR7OS_SYSTEMCTL in tests.
 - **The lock screen** is Plasma's shell package (org.kde.plasma.desktop/contents/lockscreen), not the global theme,
   and its QML unlocks the session: `pr7os/static/lockscreen.py` (run by hook 0200) only restyles it with anchored edits
   (ParagonClock instead of Breeze's Clock; the password field's / unlock key's backgrounds; UserDelegate's gradient

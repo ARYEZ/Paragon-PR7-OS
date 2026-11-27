@@ -49,6 +49,8 @@ SYSTEM_FILES = {    # the system package's own files -> source in pr7os/static/s
     "usr/bin/pr7os-steam": "pr7os-steam",
     "usr/share/applications/pr7os-steam.desktop": "pr7os-steam.desktop",
     "etc/apt/apt.conf.d/52paragon-auto-upgrades": "52paragon-auto-upgrades",
+    "usr/libexec/paragon/pr7os-flatpak-gl": "pr7os-flatpak-gl",
+    "usr/lib/systemd/system/pr7os-flatpak-gl.service": "pr7os-flatpak-gl.service",
     # Paragon Welcome (pr7os/static/welcome): finish, keys, SSH, printers, Steam, updates
     "usr/bin/pr7os-welcome": "../welcome/pr7os-welcome",
     "usr/share/paragon/welcome/welcome.py": "../welcome/welcome.py",
@@ -61,7 +63,8 @@ SYSTEM_FILES = {    # the system package's own files -> source in pr7os/static/s
 }
 EXECUTABLE = {"usr/bin/pr7os-update", "usr/libexec/paragon/pr7os-update-helper", "usr/bin/pr7os-steam",
               "usr/bin/pr7os-welcome", "usr/libexec/paragon/pr7os-ssh-helper",
-              "usr/libexec/paragon/pr7os-drivers-helper", "etc/initramfs-tools/hooks/paragon-plymouth-fonts"}
+              "usr/libexec/paragon/pr7os-drivers-helper", "usr/libexec/paragon/pr7os-flatpak-gl",
+              "etc/initramfs-tools/hooks/paragon-plymouth-fonts"}
 
 
 def is_app_file(rel: str) -> bool:

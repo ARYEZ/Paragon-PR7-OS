@@ -52,3 +52,8 @@ echo "drivers helper: firmware and nvidia-driver resolve in Debian 13"
 find /usr/lib -path '*kcms*' -name '*krdp*' | grep -q . || fail "KRdp's settings page isn't installed"
 [ -f /var/lib/paragon/remote-desktop-allowed ] || fail "the remote desktop firewall rule wasn't added"
 echo "remote desktop: KRdp installed, firewall rule added"
+# Steam's NVIDIA libraries: the service is on at every start (it does nothing here: no NVIDIA driver running)
+systemctl is-enabled pr7os-flatpak-gl.service 2>/dev/null | grep -qx enabled \
+    || [ -L /etc/systemd/system/multi-user.target.wants/pr7os-flatpak-gl.service ] || fail "pr7os-flatpak-gl isn't enabled"
+/usr/libexec/paragon/pr7os-flatpak-gl | grep -q "no NVIDIA driver running" || fail "pr7os-flatpak-gl didn't run"
+echo "Flatpak NVIDIA service: enabled, runs"

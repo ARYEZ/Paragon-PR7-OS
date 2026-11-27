@@ -22,13 +22,14 @@ def system(tmp_path, monkeypatch):
     (root / "etc/ufw").mkdir(parents=True)
     (root / "etc/ufw/ufw.conf").write_text("# ufw\nENABLED=no\nLOGLEVEL=low\n")
     log = tmp_path / "calls.txt"
-    for name in ("ufw", "flatpak"):
+    for name in ("ufw", "flatpak", "systemctl"):
         tool = tmp_path / name
         tool.write_text(f'#!/bin/sh\necho "{name} $*" >> "{log}"\n')
         tool.chmod(0o755)
     monkeypatch.setenv("PR7OS_ROOT", str(root))
     monkeypatch.setenv("PR7OS_UFW", str(tmp_path / "ufw"))
     monkeypatch.setenv("PR7OS_FLATPAK", str(tmp_path / "flatpak"))
+    monkeypatch.setenv("PR7OS_SYSTEMCTL", str(tmp_path / "systemctl"))
     return load(STATIC / "system/setup_system.py", "setup_system"), root, log
 
 
@@ -183,3 +184,9 @@ def test_remote_desktop_from_home_networks_only_once(system):
     log.write_text("")
     mod.main(["configure"])                                                     # the next update: left to you
     assert not any(c.startswith("ufw") for c in log.read_text().splitlines())
+
+
+def test_the_flatpak_nvidia_service_is_switched_on(system):
+    mod, root, log = system
+    mod.main(["configure"])
+    assert "systemctl enable pr7os-flatpak-gl.service" in log.read_text().splitlines()

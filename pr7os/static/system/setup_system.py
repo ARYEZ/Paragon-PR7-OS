@@ -10,6 +10,7 @@
 - Remote desktop (KRdp, Plasma's RDP server: Windows' Remote Desktop Connection), once, on its own marker so installed
   systems get it too: port 3389 from home networks only (10/8, 172.16/12, 192.168/16), never from the internet, which
   RDP is a favourite target on. Nothing listens there until you set it up (Welcome's REMOTE DESKTOP).
+- pr7os-flatpak-gl.service enabled: at every start, Flatpak's NVIDIA libraries for the running driver (Steam's games).
 - Flathub as a Flatpak source (so Discover offers its apps, Steam included), every time: `--if-not-exists` makes
   that a no-op once it's there; without a network it's tried again on the next update.
 Standard library only (Debian's python3). PR7OS_ROOT, PR7OS_UFW and PR7OS_FLATPAK point the tests elsewhere.
@@ -97,6 +98,16 @@ def flathub() -> str:
     return "added" if done.returncode == 0 else f"not added yet ({done.stderr.strip()[:200]})"
 
 
+def gl_service() -> str:
+    """pr7os-flatpak-gl.service on at every start (it does nothing without the NVIDIA driver)."""
+    systemctl = tool("PR7OS_SYSTEMCTL", "systemctl")
+    if not systemctl:
+        return "systemctl isn't there"
+    done = subprocess.run([systemctl, "enable", "pr7os-flatpak-gl.service"], stdout=subprocess.DEVNULL,
+                          stderr=subprocess.DEVNULL)
+    return "on at every start" if done.returncode == 0 else "not switched on (tried again on the next update)"
+
+
 def main(argv: list[str]) -> int:
     if not argv or argv[0] != "configure":
         print(__doc__)
@@ -104,6 +115,7 @@ def main(argv: list[str]) -> int:
     print(f"PR7-OS firewall: {firewall()}")
     print(f"PR7-OS remote desktop: {remote_desktop()}")
     print(f"PR7-OS Flathub: {flathub()}")
+    print(f"PR7-OS Flatpak NVIDIA libraries: {gl_service()}")
     return 0                                    # never fail the package: each step is retried on the next update
 
 
