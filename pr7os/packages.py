@@ -49,8 +49,16 @@ SYSTEM_FILES = {    # the system package's own files -> source in pr7os/static/s
     "usr/bin/pr7os-steam": "pr7os-steam",
     "usr/share/applications/pr7os-steam.desktop": "pr7os-steam.desktop",
     "etc/apt/apt.conf.d/52paragon-auto-upgrades": "52paragon-auto-upgrades",
+    # Paragon Welcome (pr7os/static/welcome): finish, keys, SSH, printers, Steam, updates
+    "usr/bin/pr7os-welcome": "../welcome/pr7os-welcome",
+    "usr/share/paragon/welcome/welcome.py": "../welcome/welcome.py",
+    "usr/libexec/paragon/pr7os-ssh-helper": "../welcome/pr7os-ssh-helper",
+    "usr/share/polkit-1/actions/org.paragon.pr7os.ssh.policy": "../welcome/org.paragon.pr7os.ssh.policy",
+    "usr/share/applications/pr7os-welcome.desktop": "../welcome/pr7os-welcome.desktop",
+    "etc/xdg/autostart/pr7os-welcome.desktop": "../welcome/pr7os-welcome-autostart.desktop",
 }
-EXECUTABLE = {"usr/bin/pr7os-update", "usr/libexec/paragon/pr7os-update-helper", "usr/bin/pr7os-steam"}
+EXECUTABLE = {"usr/bin/pr7os-update", "usr/libexec/paragon/pr7os-update-helper", "usr/bin/pr7os-steam",
+              "usr/bin/pr7os-welcome", "usr/libexec/paragon/pr7os-ssh-helper"}
 
 
 def is_app_file(rel: str) -> bool:
@@ -147,7 +155,7 @@ CONTROL = {
     "paragon-pr7os-python": ("amd64", "python3 (>= 3.13), python3 (<< 3.14)",
                              "The Paragon apps' Python environment",
                              "Qt (PySide6, PyQt6) and the other Python packages the Paragon apps use."),
-    "paragon-pr7os-system": ("all", "python3, avahi-daemon, libnss-mdns, cups, print-manager, unattended-upgrades, "
+    "paragon-pr7os-system": ("all", "python3, paragon-pr7os-python, pkexec, avahi-daemon, libnss-mdns, cups, print-manager, unattended-upgrades, "
                                     "curl, wget, git, unzip, htop, ufw, plasma-firewall, flatpak, "
                                     "plasma-discover-backend-flatpak, mesa-vulkan-drivers, gamemode, xdg-utils",
                              "Paragon PR7-OS system",

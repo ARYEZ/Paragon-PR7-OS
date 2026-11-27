@@ -1,0 +1,9 @@
+[Desktop Entry]
+Type=Application
+Name=Welcome to PR7-OS
+Comment=Shown at sign-in until "Show at sign-in" is switched off
+Exec=pr7os-welcome --first-run
+Icon=pr7os
+NoDisplay=true
+OnlyShowIn=KDE;
+X-KDE-autostart-phase=2

@@ -93,7 +93,8 @@ def test_the_system_package_brings_what_was_chosen(debs, tmp_path):
     assert "openssh-server" not in depends                        # an SSH server stays your own choice
     subprocess.run(["dpkg-deb", "-e", str(deb), str(tmp_path / "ctl")], check=True)
     assert "setup_system.py configure" in (tmp_path / "ctl/postinst").read_text()
-    assert (tmp_path / "ctl/conffiles").read_text().split() == ["/etc/apt/apt.conf.d/52paragon-auto-upgrades"]
+    assert (tmp_path / "ctl/conffiles").read_text().split() == ["/etc/apt/apt.conf.d/52paragon-auto-upgrades",
+                                                                "/etc/xdg/autostart/pr7os-welcome.desktop"]
     listing = subprocess.run(["dpkg-deb", "-c", str(deb)], capture_output=True, text=True).stdout
     assert any(l.startswith("-rwxr-xr-x") and l.endswith("usr/bin/pr7os-steam") for l in listing.splitlines())
 

@@ -1,0 +1,3 @@
+#!/bin/sh
+# Paragon Welcome (the apps' Python environment has PySide6). --first-run: only until it's been switched off.
+exec /opt/paragon/venv/bin/python /usr/share/paragon/welcome/welcome.py "$@"

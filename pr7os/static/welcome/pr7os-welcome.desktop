@@ -1,0 +1,9 @@
+[Desktop Entry]
+Type=Application
+Name=Welcome to PR7-OS
+GenericName=Welcome
+Comment=Finish, keys, SSH, printers, Steam and updates in one place
+Exec=pr7os-welcome
+Icon=pr7os
+Categories=System;Settings;
+Terminal=false

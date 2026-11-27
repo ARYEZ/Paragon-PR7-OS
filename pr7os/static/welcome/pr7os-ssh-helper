@@ -1,0 +1,63 @@
+#!/usr/bin/python3
+"""Turns the SSH server on or off (as root, started by pkexec from Paragon Welcome). One word only, nothing else:
+
+    pr7os-ssh-helper on     install openssh-server if it isn't there, then start it now and at every boot
+    pr7os-ssh-helper off    stop it and don't start it at boot (the package stays installed)
+    pr7os-ssh-helper state  "on" or "off" (no root needed)
+
+The firewall already lets port 22 in (PR7-OS's setup). Prints STEP / DONE / ERROR lines for the window."""
+import os
+import subprocess
+import sys
+
+APT = os.environ.get("PR7OS_APT", "apt-get")
+SYSTEMCTL = os.environ.get("PR7OS_SYSTEMCTL", "systemctl")
+
+
+def say(line: str) -> None:
+    print(line, flush=True)
+
+
+def installed() -> bool:
+    return subprocess.run(["dpkg-query", "-W", "-f", "${db:Status-Status}", "openssh-server"], capture_output=True,
+                          text=True).stdout.strip() == "installed"
+
+
+def state() -> str:
+    done = subprocess.run([SYSTEMCTL, "is-active", "ssh"], capture_output=True, text=True)
+    return "on" if done.stdout.strip() == "active" else "off"
+
+
+def main(argv: list[str]) -> int:
+    word = argv[0] if len(argv) == 1 else ""
+    if word == "state":
+        say(state())
+        return 0
+    if word not in ("on", "off"):
+        say("ERROR say on, off or state")
+        return 2
+    if os.geteuid() != 0 and not os.environ.get("PR7OS_APT"):
+        say("ERROR this needs administrator rights (start it with pkexec)")
+        return 1
+    env = dict(os.environ, DEBIAN_FRONTEND="noninteractive")
+    if word == "on":
+        if not installed():
+            say("STEP Installing the SSH server")
+            subprocess.run([APT, "-o", "DPkg::Lock::Timeout=600", "update", "-qq"], env=env)
+            if subprocess.run([APT, "-o", "DPkg::Lock::Timeout=600", "install", "-y", "openssh-server"],
+                              env=env).returncode:
+                say("ERROR the SSH server couldn't be installed (is the PC online?)")
+                return 1
+        say("STEP Starting it")
+        if subprocess.run([SYSTEMCTL, "enable", "--now", "ssh"]).returncode:
+            say("ERROR the SSH server didn't start")
+            return 1
+    else:
+        say("STEP Stopping it")
+        subprocess.run([SYSTEMCTL, "disable", "--now", "ssh"])
+    say(f"DONE {word}")
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main(sys.argv[1:]))
