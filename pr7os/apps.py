@@ -15,7 +15,7 @@ Layout in the image:
     /etc/xdg/autostart/paragon-pr7-<x>.desktop    apps that start at sign-in (PR7-Q, as Greenshot does)
 
 Only apps that work on Linux are here. Left out (Windows-only for now): PR7-AR (Autoruns), PR7-UN (uninstaller),
-PR7-U (Windows installers), PR7-CB (Wayland's clipboard).
+PR7-U (Windows installers).
 """
 from __future__ import annotations
 
@@ -97,6 +97,8 @@ APPS = [
         actions=(("search", "Search files", "", "Ctrl+Alt+Space"),), autostart="--index-service"),
     App("LN", "Launcher", "Launcher", "Utility;",
         actions=(("show", "Open the launcher", "", "Alt+Space"),), autostart="--tray"),
+    App("CB", "Clipboard", "Clipboard History", "Utility;",
+        actions=(("show", "Show clips", "", "Ctrl+`"),), autostart="--tray"),
 ]
 
 # Plasma's own defaults that PR7-OS changes for its apps (/etc/xdg/kglobalshortcutsrc: what a new account starts with):
@@ -106,7 +108,7 @@ _launch=Alt+F2\tSearch
 """
 
 LEFT_OUT = {"AR": "Autoruns: Windows' startup places", "UN": "uninstaller: Windows programs",
-            "U": "family installer: Windows setups", "CB": "clipboard history: global keys, Wayland's clipboard"}
+            "U": "family installer: Windows setups"}
 
 
 def launcher(app: App) -> str:
