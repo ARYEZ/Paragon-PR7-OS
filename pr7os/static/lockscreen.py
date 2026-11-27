@@ -28,6 +28,9 @@ EDITS = [
         ("        Clock {\n            id: clock\n", "        ParagonClock {\n            id: clock\n"),
     ]),
     (f"{SHELL}/MainBlock.qml", [
+        # Plasma imports QtQuick 2.2 here, and Qt checks properties against it: Gradient.orientation (the left-to-right
+        # gradient) is 2.13+, and asking for it in 2.2 failed the whole lock screen (0.1.1 fell back to the built-in one)
+        ("import QtQuick 2.2\n", "import QtQuick 2.15\n"),
         ("            id: passwordBox\n",
          "            id: passwordBox\n"
          "            // Paragon: the login screen's field (dark, rounded, the family gradient under it)\n"

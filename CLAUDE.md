@@ -26,10 +26,21 @@ a live ISO with the Calamares installer. The owner writes Python; explain the wh
   `live/build.sh` runs in `debian:trixie` (CI: docker --privileged); `tools/live_bootloader.py` themes the ISO's own
   menus (GRUB's live-theme with our fonts, isolinux colours). GRUB finds fonts by their name inside the .pf2:
   `grub-fonts.py` reads them back (SemiBold needs `-n`, or it's named "Inter Regular").
+- **Packages and updates** (0.2.0): `pr7os/packages.py` builds paragon-pr7os-{look,apps,updates} (all) and -python
+  (amd64; version "1+<hash of its dists>") plus `pr7os-update.json` (versions, SHA-256, sizes); `live/build.sh` builds
+  the venv at /opt/paragon/venv in the container, the packages, and live-build installs them (config/packages.chroot).
+  The look's postinst runs `static/setup_look.py configure` (idempotent; dpkg triggers on Plasma's lock screen, Breeze
+  components and Breeze Dark re-run it); the ISO's hook 0200 re-runs it `--strict`. The updater (`static/updater/`):
+  `pr7os-update [--check]` (systemd user timer daily, notify-send actions), `window.py` (PySide6), the root helper
+  (pkexec, no arguments, URLs built from the repo + tag, file names checked) installs with apt-get --force-confold.
+  Release assets: the packages, the manifest, `paragon-pr7os-updates.deb` (fixed name for the one-time command).
+  Tests: tests/test_packages.py, tests/test_updater.py (a stand-in GitHub); CI `update-test` (debian:trixie: old
+  updater installed with apt, updated by the helper).
 - **The lock screen** is Plasma's shell package (org.kde.plasma.desktop/contents/lockscreen), not the global theme,
   and its QML unlocks the session: `pr7os/static/lockscreen.py` (run by hook 0200) only restyles it with anchored edits
   (ParagonClock instead of Breeze's Clock; the password field's / unlock key's backgrounds; UserDelegate's gradient
-  ring), checks all of them before writing, diverts the files. `tests/data/plasma-6.3.6` holds Plasma's own files for
+  ring; MainBlock.qml's `import QtQuick 2.2` raised to 2.15, or Gradient.orientation fails the file), checks all
+  of them before writing, diverts the files. `tests/data/plasma-6.3.6` holds Plasma's own files for
   the tests; on a Plasma upgrade, refresh them and re-check the anchors. The boot test locks (Meta+L) and unlocks.
 - **CI** (`.github/workflows/build.yml`): tests, then the ISO (ubuntu runner, docker debian:trixie), then
   `tools/boot_test.py` boots it in QEMU/KVM (UEFI: boot menu, splash, desktop; direct kernel with

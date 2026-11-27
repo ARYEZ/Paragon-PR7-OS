@@ -101,3 +101,15 @@ def test_restore_gives_plasma_its_design(system):
     mod.main([str(system)])
     mod.main([str(system), "--restore"])
     assert (system / f"{SHELL}/LockScreenUi.qml").read_text() == before
+
+
+def test_every_edited_file_imports_a_qtquick_new_enough_for_the_edits(system):
+    """Qt checks a property against the file's QtQuick import: Gradient.orientation needs 2.13. Plasma's MainBlock.qml
+    imports 2.2, and the lock screen failed to load in 0.1.1 until its import was raised."""
+    import re
+    load().main([str(system)])
+    for rel in (f"{SHELL}/LockScreenUi.qml", f"{SHELL}/MainBlock.qml", DELEGATE, f"{SHELL}/ParagonClock.qml"):
+        text = (system / rel).read_text()
+        major, minor = map(int, re.search(r"^import QtQuick (\d+)\.(\d+)\s*$", text, re.M).groups())
+        if "Gradient.Horizontal" in text:
+            assert (major, minor) >= (2, 13), rel

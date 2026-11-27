@@ -1,5 +1,26 @@
 # Changelog
 
+## 0.2.0
+
+**Updates come to you.** Once a day PR7-OS checks for a new release and says so; "PR7-OS Update" (in the menu, or
+from the notification) shows what's new, asks for your password once and installs it. Only what changed is
+downloaded, and every package is checked against the release's checksums first. Debian's own updates keep coming
+through Discover as before.
+
+- **Already installed PR7-OS 0.1.x?** Get the updater once, in a terminal (Konsole or PR7-TM):
+
+      wget -O /tmp/pr7os-updates.deb https://github.com/ARYEZ/Paragon-PR7-OS/releases/latest/download/paragon-pr7os-updates.deb
+      sudo apt install /tmp/pr7os-updates.deb
+      pr7os-update
+
+  then UPDATE, and log out and back in. From then on, updates arrive by themselves.
+- The lock screen in the login screen's look, for real this time: 0.1.1's showed KDE's built-in emergency lock screen on
+  KDE's purple wallpaper (Plasma's password block imports an old QtQuick version that rejected the gradient). Its
+  wallpaper is now Paragon's too.
+- PR7-OS is now built from its own Debian packages (paragon-pr7os-look, -apps, -python, -updates): the ISO and the
+  updates install the same files. When Debian updates Plasma, the look is applied to the new version by itself; if a
+  future Plasma isn't recognised, the lock screen keeps Plasma's own design rather than breaking.
+
 ## 0.1.1
 
 - The lock screen (Meta+L, or after a while idle) in the login screen's look: the large clock and the date in capitals,
