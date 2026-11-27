@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.4.1
+
+- **Undo an update.** PR7-OS Update has GO BACK: it installs the release before the one you have again (its own
+  packages, checked against its manifest, as an update is), and the newer one isn't offered by the daily check until
+  something newer still comes out. Over SSH: `sudo /usr/libexec/paragon/pr7os-update-helper previous`.
+- **A snapshot before every update.** Each update (and each going back) starts with a Timeshift snapshot of the system
+  (your home folder is left out: that's PR7-BK's job). Snapshots share what didn't change, so after the first one
+  they're small; PR7-OS keeps its three newest and never touches snapshots of your own. Timeshift (in the menu) restores
+  one if anything else ever goes wrong. No snapshot is taken with less than 5 GB free; the update goes ahead anyway.
+
 ## 0.4.0
 
 - **Bebas Neue everywhere**: Plasma's fonts, the login and lock screens, the boot splash and boot menu, the installer,

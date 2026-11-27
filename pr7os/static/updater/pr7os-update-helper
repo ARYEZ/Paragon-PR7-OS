@@ -1,7 +1,8 @@
 #!/usr/bin/python3
-"""Installs Paragon PR7-OS's newest release (as root, started by pkexec). Takes no arguments: it only ever installs
-the newest release of ARYEZ/Paragon-PR7-OS, after checking each package against the release's manifest.
-Prints STEP / PROGRESS / DONE lines for the update window."""
+"""Installs Paragon PR7-OS's newest release (as root, started by pkexec), or with the one word `previous`, the release
+before the installed one (Go back). Nothing else is accepted: it only ever installs releases of ARYEZ/Paragon-PR7-OS,
+after checking each package against the release's manifest. A Timeshift snapshot of the system comes first (skipped,
+never fatal, without Timeshift or 5 GB free). Prints STEP / PROGRESS / DONE lines for the update window."""
 import os
 import sys
 import tempfile
@@ -16,19 +17,32 @@ def say(*parts):
     print(*parts, flush=True)
 
 
-def main() -> int:
+def main(argv: list[str]) -> int:
+    if argv not in ([], ["previous"]):
+        say("ERROR the only word this takes is: previous")
+        return 2
+    back = argv == ["previous"]
     if os.geteuid() != 0 and not u._server():
         say("ERROR this needs administrator rights (start it with pkexec)")
         return 1
     try:
-        say("STEP Looking for the newest release")
-        info = u.latest()
-        pkgs = u.pending(info["manifest"], u.installed())
+        have = u.installed()
+        if back:
+            say("STEP Looking for the release before this one")
+            info = u.previous(u.current_version(have))
+        else:
+            say("STEP Looking for the newest release")
+            info = u.latest()
+        pkgs = u.pending(info["manifest"], have)
         before = os.environ.get("PR7OS_UPDATE_DONE", "")          # what the run before a re-run installed
         logout = before == "logout"
         if not pkgs:
             say(f"DONE {before or 'up-to-date'} {info['version']}")
             return 0
+        if not os.environ.get("PR7OS_UPDATE_RERUN"):        # once per update (not again in the re-run)
+            say("STEP Taking a snapshot of the system (Timeshift)")
+            what = f"going back to {info['version']}" if back else info["version"]
+            say(f"LOG Snapshot: {u.snapshot(what)}")
         with tempfile.TemporaryDirectory(prefix="pr7os-update-") as tmp:
             say(f"STEP Downloading Paragon PR7-OS {info['version']}")
             files = u.download(info["tag"], pkgs, Path(tmp),
@@ -39,14 +53,15 @@ def main() -> int:
             say(f"ERROR apt-get stopped with code {rc}")
             return rc
         logout = logout or u.needs_logout(pkgs)
-        if any(p["name"] == "paragon-pr7os-updates" for p in pkgs) and not os.environ.get("PR7OS_UPDATE_RERUN"):
+        if not back and any(p["name"] == "paragon-pr7os-updates" for p in pkgs) \
+                and not os.environ.get("PR7OS_UPDATE_RERUN"):
             # the updater itself was just updated: its new copy may know more (a new package, a new step), so it
             # looks again, once, in this same run
             say("STEP The updater was updated: checking again with the new one")
             env = dict(os.environ, PR7OS_UPDATE_RERUN="1", PR7OS_UPDATE_DONE="logout" if logout else "installed")
             me = os.path.abspath(__file__)
             os.execve(sys.executable, [sys.executable, me], env)
-        say(f"DONE {'logout' if logout else 'installed'} {info['version']}")
+        say(f"DONE {'logout' if logout else 'installed'} {info['version']}" + (" back" if back else ""))
         return 0
     except u.UpdateError as e:
         say(f"ERROR {e}")
@@ -54,4 +69,4 @@ def main() -> int:
 
 
 if __name__ == "__main__":
-    raise SystemExit(main())
+    raise SystemExit(main(sys.argv[1:]))

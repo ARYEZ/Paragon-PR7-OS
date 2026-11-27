@@ -158,7 +158,7 @@ CONTROL = {
                              "Qt (PySide6, PyQt6) and the other Python packages the Paragon apps use."),
     "paragon-pr7os-system": ("all", "python3, paragon-pr7os-python, pkexec, avahi-daemon, libnss-mdns, cups, print-manager, unattended-upgrades, "
                                     "curl, wget, git, unzip, htop, ufw, plasma-firewall, flatpak, "
-                                    "plasma-discover-backend-flatpak, mesa-vulkan-drivers, gamemode, xdg-utils",
+                                    "plasma-discover-backend-flatpak, mesa-vulkan-drivers, gamemode, xdg-utils, timeshift",
                              "Paragon PR7-OS system",
                              "What PR7-OS adds to Debian's Plasma: names on the network (name.local), printing, Debian's\n"
                              " security fixes by themselves, command-line basics, the firewall, Flatpak with Flathub\n"

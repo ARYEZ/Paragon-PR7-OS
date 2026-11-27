@@ -16,8 +16,8 @@ import pr7os_update as u  # noqa: E402
 
 from PySide6.QtCore import QObject, QProcess, Qt, Signal  # noqa: E402
 from PySide6.QtGui import QFont  # noqa: E402
-from PySide6.QtWidgets import (QApplication, QHBoxLayout, QLabel, QPlainTextEdit, QProgressBar,  # noqa: E402
-                               QPushButton, QTextBrowser, QVBoxLayout, QWidget)
+from PySide6.QtWidgets import (QApplication, QHBoxLayout, QLabel, QMessageBox, QPlainTextEdit,  # noqa: E402
+                               QProgressBar, QPushButton, QTextBrowser, QVBoxLayout, QWidget)
 
 GRADIENT = "qlineargradient(x1:0, y1:0, x2:1, y2:0, stop:0 #FF0743, stop:0.5 #FA3632, stop:1 #F2781E)"
 STYLE = f"""
@@ -87,6 +87,9 @@ class Window(QWidget):
         keys = QHBoxLayout()
         self.more = QPushButton("DETAILS")
         self.more.clicked.connect(self.toggle_details)
+        self.back = QPushButton("GO BACK")            # the release before the installed one (a bad update undone)
+        self.back.setToolTip("Install the PR7-OS release before this one again")
+        self.back.clicked.connect(self.go_back)
         self.later = QPushButton("LATER")
         self.later.clicked.connect(self.close)
         self.update_key = QPushButton("UPDATE")
@@ -94,6 +97,7 @@ class Window(QWidget):
         self.update_key.setEnabled(False)
         self.update_key.clicked.connect(self.start)
         keys.addWidget(self.more)
+        keys.addWidget(self.back)
         keys.addStretch(1)
         keys.addWidget(self.later)
         keys.addWidget(self.update_key)
@@ -153,9 +157,21 @@ class Window(QWidget):
         self.later.setText("CLOSE")
 
     # ---------------------------------------------------------------- installing
-    def start(self):
+    def confirm(self, text: str) -> bool:
+        """Asks first (tests replace it)."""
+        return QMessageBox.question(self, "PR7-OS Update", text) == QMessageBox.StandardButton.Yes
+
+    def go_back(self):
+        if not self.confirm("Go back to the PR7-OS release before this one?\n\nA snapshot of the system is taken "
+                            "first; Timeshift (in the menu) can restore it."):
+            return
+        self.start(previous=True)
+
+    def start(self, previous: bool = False):
+        self.going_back = previous
         self.state = "installing"
         self.update_key.setEnabled(False)
+        self.back.setEnabled(False)
         self.later.setEnabled(False)
         self.progress.setRange(0, 0)
         self.progress.show()
@@ -167,7 +183,7 @@ class Window(QWidget):
         cmd = type(self).helper
         if os.environ.get("PR7OS_UPDATE_HELPER"):
             cmd = shlex.split(os.environ["PR7OS_UPDATE_HELPER"])
-        self.proc.start(cmd[0], cmd[1:])
+        self.proc.start(cmd[0], cmd[1:] + (["previous"] if previous else []))
         if self.sync:
             self.proc.waitForFinished(120000)
             self._read()
@@ -193,6 +209,8 @@ class Window(QWidget):
             self.details.appendPlainText(rest)
         elif word == "DONE":
             self.result = rest.split(" ")[0]
+            parts = rest.split(" ")
+            self.done_version = parts[1] if len(parts) > 1 else ""
         elif word == "ERROR":
             self.result = "error"
             self.status.setText(rest)
@@ -205,6 +223,7 @@ class Window(QWidget):
         self.progress.hide()
         self.later.setEnabled(True)
         self.later.setText("CLOSE")
+        self.back.setEnabled(True)
         if code in (126, 127) and not self.result:      # pkexec: the password dialog was cancelled
             self.state = "available"
             self.status.setText("Nothing was changed (no password given).")
@@ -219,7 +238,13 @@ class Window(QWidget):
             return
         self.state = "done"
         version = self.info["version"] if self.info else ""
-        self.heading.setText(f"Paragon PR7-OS {version} is installed")
+        if getattr(self, "going_back", False):
+            version = getattr(self, "done_version", "") or version
+            if self.info:
+                u.skip(self.info["version"])          # not offered again by the daily check; a newer one will be
+            self.heading.setText(f"Back to Paragon PR7-OS {version}")
+        else:
+            self.heading.setText(f"Paragon PR7-OS {version} is installed")
         if self.result == "logout":
             self.status.setText("Log out and back in to see the new look everywhere.")
             self.update_key.setText("LOG OUT NOW")

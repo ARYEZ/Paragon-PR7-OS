@@ -50,7 +50,11 @@ a live ISO with the Calamares installer. The owner writes Python; explain the wh
   desktop-base or pixmaps) `face.png`; never a chosen one. /etc/skel/.face(.icon) belong to desktop-base: diverted
   (`skel_faces`), never shipped (dpkg refuses another package's file: 0.2.1's first build). The helper's apt-get waits for the lock (DPkg::Lock::Timeout). The updater installs any `paragon-pr7os-<word>` the
   manifest lists (`PACKAGE`; 0.2.1's fixed list skipped -system: test_packages checks every built package passes), and
-  after updating paragon-pr7os-updates re-runs its new copy once (PR7OS_UPDATE_RERUN / _DONE).
+  after updating paragon-pr7os-updates re-runs its new copy once (PR7OS_UPDATE_RERUN / _DONE). Go back (0.4.1): the
+  helper's only accepted word `previous` installs `pr7os_update.previous(current)` (newest older release with a
+  manifest, never 0.0.x; no re-run); the window's GO BACK skips the newer version. Every run first takes a Timeshift
+  snapshot (`snapshot`: config written once, system only, PR7-OS's three newest kept, skipped below 5 GB or without
+  Timeshift: never fatal); PR7OS_TIMESHIFT / _CONFIG / PR7OS_SNAPSHOT_ROOT in tests. CI's update-test also goes back.
 - **The lock screen** is Plasma's shell package (org.kde.plasma.desktop/contents/lockscreen), not the global theme,
   and its QML unlocks the session: `pr7os/static/lockscreen.py` (run by hook 0200) only restyles it with anchored edits
   (ParagonClock instead of Breeze's Clock; the password field's / unlock key's backgrounds; UserDelegate's gradient

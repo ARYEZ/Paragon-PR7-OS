@@ -175,7 +175,8 @@ class Window(QWidget):
                 ("PRINTERS", "Network printers are found by themselves; add one here.", "ADD A PRINTER",
                  ["systemsettings", "kcm_printer_manager"]),
                 ("STEAM", "Steam from Flathub, with its own libraries.", "GET STEAM", ["pr7os-steam"]),
-                ("UPDATES", "PR7-OS checks once a day; look now.", "CHECK FOR UPDATES", ["pr7os-update"])):
+                ("UPDATES", "PR7-OS checks once a day; look now, or go back to the release before.", "CHECK FOR UPDATES",
+                 ["pr7os-update"])):
             box, row, _ = card(label, text)
             b = QPushButton(key)
             b.clicked.connect(lambda _=False, c=command: self.start(c))

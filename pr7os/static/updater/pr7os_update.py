@@ -13,6 +13,7 @@ import hashlib
 import json
 import os
 import re
+import shutil
 import subprocess
 import tempfile
 import urllib.request
@@ -56,13 +57,113 @@ def latest() -> dict:
     try:
         rel = json.loads(fetch(api_url("releases/latest")))
         tag = rel["tag_name"]
-        if not re.fullmatch(r"v[0-9][0-9A-Za-z.+~-]*", tag):
-            raise UpdateError(f"unexpected release tag {tag!r}")
-        manifest = json.loads(fetch(download_url(tag, MANIFEST)))
     except (ValueError, KeyError) as e:
+        raise UpdateError(f"the release's details can't be read ({e})") from e
+    return _info(tag, rel)
+
+
+def version_key(v: str) -> tuple:
+    """"0.4.0" -> (0, 4, 0); a package's version (Python's "1+hash") sorts first."""
+    return tuple(int(x) for x in re.findall(r"\d+", v.split("+")[0].split("~")[0])[:4]) or (0,)
+
+
+def _info(tag: str, rel: dict) -> dict:
+    if not re.fullmatch(r"v[0-9][0-9A-Za-z.+~-]*", tag):
+        raise UpdateError(f"unexpected release tag {tag!r}")
+    try:
+        manifest = json.loads(fetch(download_url(tag, MANIFEST)))
+    except ValueError as e:
         raise UpdateError(f"the release's details can't be read ({e})") from e
     return {"tag": tag, "version": manifest.get("version", tag[1:]), "notes": rel.get("body") or "",
             "manifest": manifest}
+
+
+def previous(current: str) -> dict:
+    """The newest release older than `current` that carries packages (Go back): {"tag", "version", ...}."""
+    try:
+        rels = json.loads(fetch(api_url("releases?per_page=50")))
+    except ValueError as e:
+        raise UpdateError(f"the releases can't be read ({e})") from e
+    older = []
+    for rel in rels:
+        tag = rel.get("tag_name", "")
+        names = {a.get("name") for a in rel.get("assets", [])}
+        if rel.get("draft") or rel.get("prerelease") or MANIFEST not in names or not tag.startswith("v"):
+            continue
+        if version_key(tag[1:]) < version_key(current) and not tag.startswith("v0.0."):
+            older.append((version_key(tag[1:]), tag, rel))
+    if not older:
+        raise UpdateError(f"there's no release before {current} to go back to")
+    _key, tag, rel = max(older, key=lambda x: x[0])
+    return _info(tag, rel)
+
+
+def current_version(have: dict[str, str]) -> str:
+    """The PR7-OS version installed: its look package's (every release builds them all with the same version)."""
+    return have.get("paragon-pr7os-look") or have.get("paragon-pr7os-updates") or ""
+
+
+# ---------------------------------------------------------------------------------------------- Timeshift snapshots
+SNAPSHOT_PREFIX = "PR7-OS before "
+KEEP_SNAPSHOTS = 3
+MIN_FREE = 5_000_000_000
+
+
+def _timeshift() -> str | None:
+    return os.environ.get("PR7OS_TIMESHIFT") or shutil.which("timeshift")
+
+
+def timeshift_config(path: str | None = None) -> None:
+    """Timeshift's settings the first time (Timeshift's own app writes them otherwise): rsync snapshots of the system on
+    the drive it runs from, home folders left out (yours are PR7-BK's to back up), no schedule of its own."""
+    path = path or os.environ.get("PR7OS_TIMESHIFT_CONFIG", "/etc/timeshift/timeshift.json")
+    if os.path.exists(path):
+        return
+    uuid = subprocess.run(["findmnt", "-no", "UUID", "/"], capture_output=True, text=True).stdout.strip()
+    conf = {"backup_device_uuid": uuid, "parent_device_uuid": "", "do_first_run": "false", "btrfs_mode": "false",
+            "include_btrfs_home_for_backup": "false", "include_btrfs_home_for_restore": "false",
+            "stop_cron_emails": "true", "schedule_monthly": "false", "schedule_weekly": "false",
+            "schedule_daily": "false", "schedule_hourly": "false", "schedule_boot": "false", "count_monthly": "2",
+            "count_weekly": "3", "count_daily": "5", "count_hourly": "6", "count_boot": "5",
+            "date_format": "%Y-%m-%d %H:%M:%S", "exclude": ["/root/**", "/home/*/**"], "exclude-apps": []}
+    os.makedirs(os.path.dirname(path), exist_ok=True)
+    with open(path, "w", encoding="utf-8") as fh:
+        json.dump(conf, fh, indent=2)
+
+
+def snapshots(run=subprocess.run) -> list[str]:
+    """PR7-OS's own Timeshift snapshots, oldest first."""
+    ts = _timeshift()
+    if not ts:
+        return []
+    out = run([ts, "--list", "--scripted"], capture_output=True, text=True).stdout
+    names = []
+    for line in out.splitlines():
+        m = re.match(r"^\s*\d+\s+>\s+(\S+)\s+\S*\s+(.*)$", line)
+        if m and m.group(2).strip().startswith(SNAPSHOT_PREFIX):
+            names.append(m.group(1))
+    return sorted(names)
+
+
+def snapshot(label: str, run=subprocess.run) -> str:
+    """A Timeshift snapshot of the system before an update ("taken", or why not: an update never fails for it)."""
+    ts = _timeshift()
+    if not ts:
+        return "skipped (Timeshift isn't installed)"
+    root = os.environ.get("PR7OS_SNAPSHOT_ROOT", "/")
+    if shutil.disk_usage(root).free < MIN_FREE:
+        return "skipped (less than 5 GB free)"
+    try:
+        timeshift_config()
+        done = run([ts, "--create", "--comments", SNAPSHOT_PREFIX + label, "--tags", "O", "--scripted"],
+                   capture_output=True, text=True, timeout=3600)
+    except (OSError, subprocess.SubprocessError) as e:
+        return f"skipped ({e})"
+    if done.returncode:
+        return f"failed ({(done.stdout + done.stderr).strip().splitlines()[-1:] or ['?']})"
+    for old in snapshots(run)[:-KEEP_SNAPSHOTS]:
+        run([ts, "--delete", "--snapshot", old, "--scripted"], capture_output=True, text=True)
+    return "taken"
 
 
 def installed() -> dict[str, str]:

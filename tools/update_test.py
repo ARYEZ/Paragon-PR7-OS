@@ -4,7 +4,8 @@ installed with apt, the new one is published on a local stand-in release, and th
     python3 tools/update_test.py        (as root, with the repository as the working folder)
 
 What it proves: the packages install with apt (their dependencies from Debian), the helper finds the release, checks
-the package against the manifest, installs it, and dpkg then has the new version.
+the package against the manifest, installs it, and dpkg then has the new version; then Go back (`previous`) installs
+the release before it again (a real apt downgrade), and dpkg has the old version.
 """
 import hashlib
 import http.server
@@ -19,7 +20,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from pr7os import packages  # noqa: E402
 
-OLD, NEW = "0.0.1", "0.0.2"
+OLD, NEW = "0.9.1", "0.9.2"           # not 0.0.x: Go back skips development builds
 
 
 def installed_version() -> str:
@@ -41,6 +42,17 @@ def main() -> int:
     api = site / "repos/ARYEZ/Paragon-PR7-OS/releases"
     api.mkdir(parents=True)
     (api / "latest").write_text(json.dumps({"tag_name": f"v{NEW}", "body": "test"}))
+    # the release before it, for Go back, and the releases list (the stand-in server ignores ?per_page=50)
+    prev = site / "ARYEZ/Paragon-PR7-OS/releases/download" / f"v{OLD}"
+    prev.mkdir(parents=True)
+    old_copy = prev / old.name
+    old_copy.write_bytes(old.read_bytes())
+    (prev / "pr7os-update.json").write_text(json.dumps({"version": OLD, "packages": [{
+        "name": "paragon-pr7os-updates", "version": OLD, "file": old_copy.name,
+        "sha256": hashlib.sha256(old_copy.read_bytes()).hexdigest(), "size": old_copy.stat().st_size}]}))
+    asset = [{"name": "pr7os-update.json"}]
+    (api / "index.html").write_text(json.dumps([{"tag_name": f"v{NEW}", "assets": asset},
+                                                 {"tag_name": f"v{OLD}", "assets": asset}]))
 
     subprocess.run(["apt-get", "install", "-y", str(old)], check=True,
                    env=dict(os.environ, DEBIAN_FRONTEND="noninteractive"))
@@ -61,6 +73,12 @@ def main() -> int:
     again = subprocess.run(["/usr/libexec/paragon/pr7os-update-helper"], env=env, capture_output=True, text=True)
     assert again.stdout.strip().splitlines()[-1] == f"DONE up-to-date {NEW}", again.stdout
     print(f"updated to {NEW} by the helper; running it again: up to date")
+    back = subprocess.run(["/usr/libexec/paragon/pr7os-update-helper", "previous"], env=env, capture_output=True,
+                          text=True)
+    print(back.stdout, back.stderr)
+    assert back.returncode == 0 and back.stdout.strip().splitlines()[-1] == f"DONE installed {OLD} back", back.stdout
+    assert installed_version() == OLD, installed_version()
+    print(f"went back to {OLD} with the helper")
     return 0
 
 
