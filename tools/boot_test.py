@@ -4,7 +4,8 @@
 
 Run 1, UEFI from the ISO (as on a PC): the boot menu, the splash, the desktop the live session logs into by itself.
 Run 2, the ISO's own kernel with live-config's "noautologin": the login screen, then the live password ("live") typed
-in and the desktop again. OUT_DIR gets boot_menu.png, splash.png, desktop.png, login.png, desktop_after_login.png,
+in and the desktop again, then Meta+L and unlocking with the password. OUT_DIR gets boot_menu.png, splash.png,
+desktop.png, login.png, desktop_after_login.png, lock_screen.png, unlocked.png,
 timeline.png (every frame, small) and result.txt; the exit code is 1 when a desktop never appeared.
 """
 from __future__ import annotations
@@ -101,6 +102,13 @@ def brightness(img: Image.Image) -> float:
     return sum(ImageStat.Stat(img.convert("L")).mean)
 
 
+def difference(a: Image.Image, b: Image.Image) -> float:
+    """How different two screens are: the mean of every pixel's difference (0 = the same picture)."""
+    from PIL import ImageChops
+    small = (320, 200)
+    return sum(ImageStat.Stat(ImageChops.difference(a.resize(small), b.resize(small))).mean) / 3
+
+
 def has_band(img: Image.Image) -> bool:
     """The boot menu's selected entry: a wide run of the family's red / orange across the middle of the screen."""
     small = img.resize((192, 108))
@@ -174,11 +182,11 @@ def main(iso: str, out_dir: str) -> int:
     for f in ("vmlinuz", "initrd.img"):
         subprocess.run(["xorriso", "-osirrox", "on", "-indev", iso, "-extract", f"/live/{f}", str(work / f)],
                        check=True, capture_output=True)
-    append = ("boot=live components quiet splash username=paragon user-fullname=Paragon hostname=pr7os locales=en_US.UTF-8 "
+    append = ("boot=live components quiet splash loglevel=3 username=paragon user-fullname=Paragon hostname=pr7os locales=en_US.UTF-8 "
               "keyboard-layouts=us live-config.noautologin console=ttyS0,115200 console=tty0")
     m = Machine(["-kernel", str(work / "vmlinuz"), "-initrd", str(work / "initrd.img"), "-append", append,
                  "-cdrom", iso], work, "login")
-    login_ok = False
+    login_ok = lock_shown = unlocked = False
     try:
         while m.elapsed() < 240:
             img = m.shot()
@@ -193,6 +201,25 @@ def main(iso: str, out_dir: str) -> int:
         img = m.shot()
         frames.append((m.elapsed(), "LOGIN", img))
         img.save(out / "desktop_after_login.png")
+        desktop = img
+        # lock (Meta+L), see the lock screen, unlock with the password: a lock screen that can't unlock fails here
+        m.key("meta_l-l")
+        time.sleep(10)
+        m.key("shift")                    # wakes the lock screen's controls
+        time.sleep(3)
+        locked = m.shot()
+        frames.append((m.elapsed(), "LOCK", locked))
+        locked.save(out / "lock_screen.png")
+        m.keys("live")
+        m.key("ret")
+        time.sleep(15)
+        back = m.shot()
+        frames.append((m.elapsed(), "LOCK", back))
+        back.save(out / "unlocked.png")
+        lock_shown = difference(locked, desktop) > 12
+        unlocked = difference(back, desktop) < 8
+        result.append(f"lock screen: {'shown' if lock_shown else 'NOT SHOWN'}; "
+                      f"unlocked: {'yes' if unlocked else 'NO'}")
     finally:
         m.stop()
     for log in work.glob("*-serial.log"):
@@ -200,7 +227,7 @@ def main(iso: str, out_dir: str) -> int:
     timeline(frames, out / "timeline.png")
     (out / "result.txt").write_text("\n".join(result) + "\n")
     print("\n".join(result))
-    return 0 if desktop_ok and login_ok else 1
+    return 0 if desktop_ok and login_ok and lock_shown and unlocked else 1
 
 
 if __name__ == "__main__":

@@ -22,5 +22,5 @@ lb config noauto \
     --iso-application "Paragon PR7-OS" \
     --iso-publisher "Paragon" \
     --iso-volume "PR7-OS" \
-    --bootappend-live "boot=live components quiet splash username=paragon user-fullname=Paragon hostname=pr7os locales=en_US.UTF-8 keyboard-layouts=us" \
+    --bootappend-live "boot=live components quiet splash loglevel=3 username=paragon user-fullname=Paragon hostname=pr7os locales=en_US.UTF-8 keyboard-layouts=us" \
     "${@}"

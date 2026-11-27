@@ -137,4 +137,5 @@ jobs:
             shots/desktop.png
             shots/login.png
             shots/boot_menu.png
+            shots/lock_screen.png
           name: Paragon PR7-OS v${{ env.PR7OS_VERSION }}

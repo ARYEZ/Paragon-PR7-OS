@@ -26,6 +26,11 @@ a live ISO with the Calamares installer. The owner writes Python; explain the wh
   `live/build.sh` runs in `debian:trixie` (CI: docker --privileged); `tools/live_bootloader.py` themes the ISO's own
   menus (GRUB's live-theme with our fonts, isolinux colours). GRUB finds fonts by their name inside the .pf2:
   `grub-fonts.py` reads them back (SemiBold needs `-n`, or it's named "Inter Regular").
+- **The lock screen** is Plasma's shell package (org.kde.plasma.desktop/contents/lockscreen), not the global theme,
+  and its QML unlocks the session: `pr7os/static/lockscreen.py` (run by hook 0200) only restyles it with anchored edits
+  (ParagonClock instead of Breeze's Clock; the password field's / unlock key's backgrounds; UserDelegate's gradient
+  ring), checks all of them before writing, diverts the files. `tests/data/plasma-6.3.6` holds Plasma's own files for
+  the tests; on a Plasma upgrade, refresh them and re-check the anchors. The boot test locks (Meta+L) and unlocks.
 - **CI** (`.github/workflows/build.yml`): tests, then the ISO (ubuntu runner, docker debian:trixie), then
   `tools/boot_test.py` boots it in QEMU/KVM (UEFI: boot menu, splash, desktop; direct kernel with
   `live-config.noautologin`: login screen, password "live", desktop) and pushes the screenshots to the

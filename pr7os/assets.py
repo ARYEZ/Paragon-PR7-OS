@@ -569,7 +569,11 @@ def build(root: Path) -> list[Path]:
     out.append(write(root, "etc/default/grub.d/paragon.cfg",
                      'GRUB_DISTRIBUTOR="Paragon PR7-OS"\nGRUB_THEME="/usr/share/grub/themes/paragon/theme.txt"\n'
                      'GRUB_GFXMODE="1920x1080,auto"\nGRUB_TIMEOUT=5\n'
-                     'GRUB_CMDLINE_LINUX_DEFAULT="quiet splash"\n'))
+                     'GRUB_CMDLINE_LINUX_DEFAULT="quiet splash loglevel=3"\n'))
+    # the lock screen: Plasma's own (it also unlocks), restyled in the image by this script
+    out.append(write(root, f"{share}/paragon/lockscreen.py", (STATIC / "lockscreen.py").read_text(encoding="utf-8")))
+    out.append(write(root, f"{share}/paragon/lockscreen/ParagonClock.qml",
+                     (STATIC / "lockscreen/ParagonClock.qml").read_text(encoding="utf-8")))
     # the boot menu's fonts are made in the image (grub-mkfont); this script names them in theme.txt
     out.append(write(root, f"{share}/paragon/grub-fonts.py", (STATIC / "grub-fonts.py").read_text(encoding="utf-8")))
     # the installer (Calamares): branding, slideshow, logo

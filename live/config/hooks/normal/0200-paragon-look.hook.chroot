@@ -33,3 +33,5 @@ gtk-update-icon-cache -f -q /usr/share/icons/hicolor || true
 update-desktop-database -q /usr/share/applications || true
 python3 /usr/share/paragon/grub-fonts.py /usr/share/grub/themes/paragon /usr/share/fonts/truetype/paragon-inter
 plymouth-set-default-theme paragon
+# the lock screen in the login screen's look (Plasma's logic, our look; stops the build if Plasma's files changed)
+python3 /usr/share/paragon/lockscreen.py

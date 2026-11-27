@@ -92,3 +92,15 @@ def test_second_boot_findings_stay_fixed(built):
     assert "/sddm/faces/" in (root / "usr/share/sddm/themes/paragon/Main.qml").read_text()
     menus = (LIVE / "config/hooks/normal/0400-paragon-menus.hook.binary").read_text()
     assert "Paragon PR7-OS (safe graphics)" in menus
+
+
+def test_the_boot_test_tells_screens_apart():
+    """Locked = far from the desktop (> 12); unlocked = the desktop again (< 8)."""
+    pytest.importorskip("PIL")
+    from PIL import Image
+    import boot_test
+    mock = ROOT / "docs/mockup"
+    desk = Image.open(mock / "desktop_obsidian.png").convert("RGB")
+    login = Image.open(mock / "login.png").convert("RGB")
+    assert boot_test.difference(desk, desk) == 0
+    assert boot_test.difference(desk, login) > 12

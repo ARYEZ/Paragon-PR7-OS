@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.1.1
+
+- The lock screen (Meta+L, or after a while idle) in the login screen's look: the large clock and the date in capitals,
+  the gradient ring around your picture, the dark password field with the family gradient under it, the gradient
+  unlock key. Plasma's own lock screen does the unlocking; only its look changes.
+- No kernel warnings flashing past during boot (such as Intel SGX's "disabled by BIOS", which is harmless): the boot
+  options add loglevel=3, which still shows real errors. An installed 0.1.0 gets it by adding loglevel=3 to
+  GRUB_CMDLINE_LINUX_DEFAULT in /etc/default/grub and running sudo update-grub.
+
 ## 0.1.0
 
 The first Paragon PR7-OS: **Debian 13 with KDE Plasma in the Paragon look**, as a live ISO you can try from a USB stick
