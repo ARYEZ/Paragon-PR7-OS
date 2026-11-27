@@ -409,7 +409,7 @@ def grub_background(w: int = 1920, h: int = 1080) -> QImage:
     p.fillRect(QRectF(0, 0, w, h), g)
     widgets.draw_mark(p, QRectF(w / 2 - 230, 170, 460, 80), glow=True)
     p.drawImage(QPointF(0, 262), text_image(f"BASED ON {DEBIAN.upper()}", 13, "#8A8A92", w, 30, 3, True))
-    box = QRectF(w / 2 - 420, 360, 840, 300)
+    box = QRectF(w * 0.27, h * 0.33, w * 0.46, h * 0.36)     # three entries (live-build adds "Utilities...")
     p.setPen(QPen(colour("#27222A"), 1)); p.setBrush(colour("#0C0A0D"))
     p.drawRoundedRect(box, 12, 12)
     p.end()
@@ -448,14 +448,14 @@ terminal-box: "terminal_*.png"
     left = 29%
     top = 35%
     width = 42%
-    height = 25%
+    height = 32%
     item_font = "Inter Regular 18"
     selected_item_font = "Inter SemiBold 18"
     item_color = "#C9C5C8"
     selected_item_color = "#FFFFFF"
-    item_height = 48
+    item_height = 44
     item_padding = 22
-    item_spacing = 10
+    item_spacing = 8
     icon_width = 0
     icon_height = 0
     item_icon_space = 0
@@ -465,7 +465,7 @@ terminal-box: "terminal_*.png"
 
 + label {
     left = 0
-    top = 66%
+    top = 73%
     width = 100%
     align = "center"
     color = "#8A8A92"
@@ -476,7 +476,7 @@ terminal-box: "terminal_*.png"
 + label {
     id = "__timeout__"
     left = 0
-    top = 71%
+    top = 78%
     width = 100%
     align = "center"
     color = "#B9B5B8"

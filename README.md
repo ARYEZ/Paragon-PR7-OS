@@ -3,7 +3,7 @@
 The Paragon family's own desktop: **Debian 13 with KDE Plasma**, in the family look (OBSIDIAN and AURORA, the
 family's colours only, Inter, the PR7 mark), with the Paragon apps.
 
-**Status: first build (0.0.1), in CI.** The approved mock-up is in `docs/mockup/`:
+**Status: 0.1.0, the first release.** The approved mock-up is in `docs/mockup/`:
 
 | | |
 |---|---|

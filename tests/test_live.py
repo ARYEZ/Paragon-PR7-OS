@@ -88,7 +88,7 @@ def test_second_boot_findings_stay_fixed(built):
     theme = (root / "usr/share/grub/themes/paragon/theme.txt").read_text()
     menu = theme[theme.index("+ boot_menu"):theme.index("}")]
     assert "top = 35%" in menu and "left = 29%" in menu           # proportions: the picture scales with the screen
-    assert "top = 66%" in theme and "top = 71%" in theme             # the hint and the countdown don't overlap
+    assert "top = 73%" in theme and "top = 78%" in theme             # the hint and the countdown don't overlap
     assert "/sddm/faces/" in (root / "usr/share/sddm/themes/paragon/Main.qml").read_text()
     menus = (LIVE / "config/hooks/normal/0400-paragon-menus.hook.binary").read_text()
     assert "Paragon PR7-OS (safe graphics)" in menus
