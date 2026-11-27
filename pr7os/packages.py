@@ -105,6 +105,7 @@ esac
         "triggers": """interest-noawait /usr/share/plasma/shells/org.kde.plasma.desktop/contents/lockscreen
 interest-noawait /usr/share/plasma/desktoptheme/breeze-dark
 interest-noawait /usr/lib/x86_64-linux-gnu/qt6/qml/org/kde/breeze/components
+interest-noawait /usr/share/kglobalaccel
 """,
     },
     "paragon-pr7os-apps": {

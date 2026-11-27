@@ -341,8 +341,9 @@ def main(iso: str, out_dir: str) -> int:
             m.key("shift")
             shot = m.shot()
             alive = app.package in m.guest("/bin/sh", ["-c", f"pgrep -af 'python -m {app.package}$' || true"])
-            # its window on the screen: not the desktop as it was, not the lock screen, not a blanked display
-            ok = alive and difference(shot, base) > 3 and difference(shot, locked) > 8 and brightness(shot) > 20
+            # its window on the screen: not the desktop as it was, not the lock screen, not a blanked display (near 0;
+            # the apps' own OBSIDIAN windows are dark, ~10)
+            ok = alive and difference(shot, base) > 3 and difference(shot, locked) > 8 and brightness(shot) > 3
             tiles.append((f"PR7-{app.letter} {app.name}", ok, shot))
             if not ok:
                 failed.append(app.letter)

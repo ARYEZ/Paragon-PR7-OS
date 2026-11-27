@@ -135,3 +135,38 @@ def test_new_accounts_get_paragons_picture_from_skel(people):
     mod.skel_faces(root)                                          # every update: the same
     mod.unskel_faces(root)
     assert (skel / ".face.icon").read_bytes() == b"DEBIAN SWIRL COPY" and os.readlink(skel / ".face") == ".face.icon"
+
+
+def test_alt_space_leaves_krunner(tmp_path, monkeypatch):
+    """KRunner's kglobalaccel entry is diverted and replaced by a copy without Alt+Space (PR7-LN's key); again on every
+    update it's the same; removing the look puts KRunner's own back. dpkg-divert is a stand-in that renames as it does."""
+    mod = load(STATIC / "setup_look.py", "setup_look_kr")
+    keys = tmp_path / "kglobalaccel"
+    keys.mkdir()
+    real = tmp_path / "applications_krunner.desktop"
+    real.write_text("[Desktop Entry]\nName=KRunner\nX-KDE-Shortcuts=Alt+Space,Alt+F2,Search\nExec=krunner\n")
+    (keys / "org.kde.krunner.desktop").symlink_to(real)               # Debian ships it as a link to the menu entry
+    db = tmp_path / "diversions"
+    tool = tmp_path / "bin/dpkg-divert"
+    tool.parent.mkdir()
+    tool.write_text(f'''#!/bin/sh
+db="{db}"; touch "$db"
+case "$1" in
+  --list) grep -F "$2" "$db" | sed 's/$/ by paragon/' ;;
+  --package) shift 2
+    if [ "$1" = --divert ]; then to="$2"; shift 3; path="$2"; mv "$path" "$to"; echo "$path" >> "$db"
+    else path="$3"; grep -vF "$path" "$db" > "$db.n"; mv "$db.n" "$db"; mv "$path.paragon-orig" "$path"; fi ;;
+esac
+''')
+    tool.chmod(0o755)
+    monkeypatch.setenv("PATH", f"{tool.parent}:{os.environ['PATH']}")
+    monkeypatch.setattr(mod, "KRUNNER_KEYS", keys / "org.kde.krunner.desktop")
+    monkeypatch.setattr(mod, "KRUNNER_ORIG", keys / "org.kde.krunner.desktop.paragon-orig")
+    mod.krunner_keys()
+    ours = (keys / "org.kde.krunner.desktop").read_text()
+    assert "X-KDE-Shortcuts=Alt+F2,Search\n" in ours and "Exec=krunner" in ours
+    assert not (keys / "org.kde.krunner.desktop").is_symlink()
+    mod.krunner_keys()                                                  # every update: the same
+    assert (keys / "org.kde.krunner.desktop").read_text() == ours
+    mod.krunner_keys_back()
+    assert (keys / "org.kde.krunner.desktop").is_symlink() and "Alt+Space" in (keys / "org.kde.krunner.desktop").read_text()

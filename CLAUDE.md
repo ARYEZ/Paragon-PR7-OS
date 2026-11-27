@@ -21,7 +21,10 @@ a live ISO with the Calamares installer. The owner writes Python; explain the wh
   icons, `/etc/xdg/mimeapps.list` (folders PR7-E, images PR7-P, PDF PR7-R, media PR7-M, text PR7-W, archives PR7-Z).
   Left out for now (`LEFT_OUT`): AR, UN, U (Windows-only), CB, LN, IS (global keys, Wayland, NTFS). `App.actions`
   (id, name, args, shortcut) become menu actions; with a shortcut the entry is also copied to /usr/share/kglobalaccel
-  (Plasma registers X-KDE-Shortcuts from there: PR7-Q owns Print); `App.autostart` -> /etc/xdg/autostart.
+  (Plasma registers X-KDE-Shortcuts from there: PR7-Q owns Print); `App.autostart` -> /etc/xdg/autostart. Other apps'
+  keys are taken in `setup_look.py`: Spectacle's kglobalaccel entry diverted away (`spectacle_keys_off`), KRunner's
+  diverted and replaced by a copy without Alt+Space (`krunner_keys`; an /etc/xdg/kglobalshortcutsrc default alone
+  didn't move it: 0.4.0's first boot test). The look's trigger on /usr/share/kglobalaccel re-applies both.
 - **The ISO**: `live/` is a live-build configuration (`auto/config`, `package-lists/paragon.list.chroot`, hooks:
   0100 apps venv + every app imports, 0200 look (Plasma style, GRUB fonts, Plymouth), 0300 system (os-release diverted,
   ID stays debian; Calamares branding; initramfs)). The generated tree goes in as `includes.chroot_after_packages`.

@@ -116,6 +116,45 @@ def spectacle_keys_on() -> None:
         subprocess.run(["dpkg-divert", "--package", "paragon", "--rename", "--remove", str(SPECTACLE_KEYS)], check=True)
 
 
+KRUNNER_KEYS = Path("/usr/share/kglobalaccel/org.kde.krunner.desktop")
+KRUNNER_ORIG = Path("/usr/share/kglobalaccel/org.kde.krunner.desktop.paragon-orig")
+
+
+def krunner_keys() -> None:
+    """Alt+Space is PR7-LN's on PR7-OS (Flow Launcher's key); KRunner keeps Alt+F2 and the Search key. Its kglobalaccel
+    entry (the 0.4.0 boot test: an /etc/xdg default didn't move it) is diverted, and a copy whose X-KDE-Shortcuts
+    leave Alt+Space out takes its place; Plasma's own updates re-run this through the look's dpkg trigger."""
+    if not shutil.which("dpkg-divert"):
+        return
+    listed = subprocess.run(["dpkg-divert", "--list", str(KRUNNER_KEYS)], capture_output=True, text=True).stdout
+    if "paragon" not in listed:
+        if not (KRUNNER_KEYS.exists() or KRUNNER_KEYS.is_symlink()):
+            return
+        subprocess.run(["dpkg-divert", "--package", "paragon", "--divert", str(KRUNNER_ORIG), "--rename", "--add",
+                        str(KRUNNER_KEYS)], check=True)
+    if not KRUNNER_ORIG.exists():
+        return
+    lines = KRUNNER_ORIG.read_text(encoding="utf-8").splitlines()
+    out = []
+    for line in lines:
+        if line.startswith("X-KDE-Shortcuts="):
+            keys = [k for k in line.split("=", 1)[1].split(",") if k.strip() and k.strip().lower() != "alt+space"]
+            line = "X-KDE-Shortcuts=" + ",".join(keys or ["Alt+F2"])
+        out.append(line)
+    if KRUNNER_KEYS.is_symlink():
+        KRUNNER_KEYS.unlink()
+    KRUNNER_KEYS.write_text("\n".join(out) + "\n", encoding="utf-8")
+
+
+def krunner_keys_back() -> None:
+    if not shutil.which("dpkg-divert"):
+        return
+    listed = subprocess.run(["dpkg-divert", "--list", str(KRUNNER_KEYS)], capture_output=True, text=True).stdout
+    if "paragon" in listed:
+        KRUNNER_KEYS.unlink(missing_ok=True)
+        subprocess.run(["dpkg-divert", "--package", "paragon", "--rename", "--remove", str(KRUNNER_KEYS)], check=True)
+
+
 # --------------------------------------------------------------------------- the account picture
 FACE = "usr/share/paragon/face.png"
 DEBIAN_PICTURES = ("usr/share/desktop-base", "usr/share/pixmaps", "usr/share/images/desktop-base")
@@ -280,6 +319,7 @@ def configure(strict: bool) -> None:
     subprocess.run(lock, check=True)
     os_release()
     spectacle_keys_off()
+    krunner_keys()
     skel_faces()
     faces()
     if shutil.which("plymouth-set-default-theme"):
@@ -294,6 +334,7 @@ def remove() -> None:
     unfaces()
     unskel_faces()
     spectacle_keys_on()
+    krunner_keys_back()
     if STYLE.exists():
         shutil.rmtree(STYLE)
     for pf2 in GRUB_THEME.glob("*.pf2"):
