@@ -54,7 +54,7 @@ def test_a_plasma_it_doesnt_recognise_changes_nothing(system):
     block.write_text(block.read_text().replace("            id: loginButton\n", "            id: unlockKey\n"))
     ui_before = (system / f"{SHELL}/LockScreenUi.qml").read_text()
     with pytest.raises(SystemExit):
-        load().main([str(system)])
+        load().main([str(system), "--strict"])
     assert (system / f"{SHELL}/LockScreenUi.qml").read_text() == ui_before   # checked first, nothing written
     assert not (system / f"{SHELL}/ParagonClock.qml").exists()
 
@@ -67,3 +67,37 @@ def test_the_image_gets_the_script_and_the_clock(built):
     hook = (ROOT / "live/config/hooks/normal/0200-paragon-look.hook.chroot").read_text()
     assert "python3 /usr/share/paragon/lockscreen.py" in hook
     assert "loglevel=3" in (ROOT / "live/auto/config").read_text()
+
+
+def test_running_again_starts_from_plasmas_files(system):
+    """An update runs it again: it starts from Plasma's kept originals, so the edits never pile up."""
+    mod = load()
+    mod.main([str(system)])
+    once = (system / f"{SHELL}/MainBlock.qml").read_text()
+    mod.main([str(system)])
+    assert (system / f"{SHELL}/MainBlock.qml").read_text() == once
+    assert (system / f"{SHELL}/MainBlock.qml.paragon-orig").exists()
+
+
+def test_a_newer_plasma_gets_its_own_design_back(system):
+    """A Plasma update whose files lack the anchors: the lock screen goes back to Plasma's design, not half-changed;
+    the ISO's build (--strict) stops instead."""
+    mod = load()
+    mod.main([str(system)])
+    kept = system / f"{SHELL}/MainBlock.qml.paragon-orig"
+    kept.write_text(kept.read_text().replace("            id: loginButton\n", "            id: unlockKey\n"))
+    with pytest.raises(SystemExit):
+        mod.main([str(system), "--strict"])
+    assert mod.main([str(system)]) == 0
+    assert "unlockKey" in (system / f"{SHELL}/MainBlock.qml").read_text()               # Plasma's, as it is
+    assert "ParagonClock" not in (system / f"{SHELL}/LockScreenUi.qml").read_text()
+    assert not (system / f"{SHELL}/ParagonClock.qml").exists()
+    assert not list(system.rglob("*.paragon-orig"))
+
+
+def test_restore_gives_plasma_its_design(system):
+    before = (system / f"{SHELL}/LockScreenUi.qml").read_text()
+    mod = load()
+    mod.main([str(system)])
+    mod.main([str(system), "--restore"])
+    assert (system / f"{SHELL}/LockScreenUi.qml").read_text() == before

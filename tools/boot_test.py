@@ -39,7 +39,11 @@ class Machine:
                 "-vga", "virtio", "-display", "none", "-serial", f"file:{work / (name + '-serial.log')}",
                 "-device", "qemu-xhci", "-device", "usb-tablet",
                 "-netdev", "user,id=n", "-device", "virtio-net-pci,netdev=n",
-                "-monitor", f"unix:{self.sock},server,nowait"]
+                "-monitor", f"unix:{self.sock},server,nowait",
+                # the QEMU guest agent (qemu-guest-agent is in the image): commands inside the machine, e.g. the journal
+                "-device", "virtio-serial", "-chardev", f"socket,path={work / (name + '-qga.sock')},server=on,wait=off,id=qga0",
+                "-device", "virtserialport,chardev=qga0,name=org.qemu.guest_agent.0"]
+        self.qga_sock = work / (name + "-qga.sock")
         self.proc = subprocess.Popen(base + args)
         for _ in range(100):
             if self.sock.exists():
@@ -62,6 +66,36 @@ class Machine:
                     break
                 out += chunk
             return out.decode(errors="replace")
+
+    def guest(self, path: str, args: list[str], timeout: float = 60) -> str:
+        """Run a command inside the machine through the guest agent; its output ("" when the agent can't)."""
+        import base64
+        import json
+
+        def call(s, msg):
+            s.sendall(json.dumps(msg).encode() + b"\n")
+            buf = b""
+            while b"\n" not in buf:
+                buf += s.recv(65536)
+            return json.loads(buf.split(b"\n")[0])
+        try:
+            with socket.socket(socket.AF_UNIX, socket.SOCK_STREAM) as s:
+                s.connect(str(self.qga_sock))
+                s.settimeout(timeout)
+                call(s, {"execute": "guest-sync", "arguments": {"id": 7}})
+                pid = call(s, {"execute": "guest-exec", "arguments": {"path": path, "arg": args,
+                                                                      "capture-output": True}})["return"]["pid"]
+                end = time.time() + timeout
+                while time.time() < end:
+                    st = call(s, {"execute": "guest-exec-status", "arguments": {"pid": pid}})["return"]
+                    if st.get("exited"):
+                        out = base64.b64decode(st.get("out-data", "")).decode(errors="replace")
+                        err = base64.b64decode(st.get("err-data", "")).decode(errors="replace")
+                        return out + err
+                    time.sleep(1)
+        except (OSError, KeyError, ValueError) as e:
+            return f"(guest agent: {e})"
+        return "(guest agent: timed out)"
 
     def shot(self) -> Image.Image:
         ppm = self.work / "frame.ppm"
@@ -218,6 +252,11 @@ def main(iso: str, out_dir: str) -> int:
         back.save(out / "unlocked.png")
         lock_shown = difference(locked, desktop) > 12
         unlocked = difference(back, desktop) < 8
+        (out / "journal.txt").write_text(m.guest("/usr/bin/journalctl", ["-b", "--no-pager", "-o", "short-monotonic"], 120))
+        (out / "lockscreen-files.txt").write_text(m.guest("/bin/sh", ["-c",
+            "ls -la /usr/share/plasma/shells/org.kde.plasma.desktop/contents/lockscreen/; "
+            "dpkg-divert --list | grep paragon; cat /usr/share/plasma/shells/org.kde.plasma.desktop/contents/lockscreen/MainBlock.qml; "
+            "find / -xdev -name UserDelegate.qml* 2>/dev/null; cat ~paragon/.config/kscreenlockerrc /etc/xdg/kscreenlockerrc 2>&1"]))
         result.append(f"lock screen: {'shown' if lock_shown else 'NOT SHOWN'}; "
                       f"unlocked: {'yes' if unlocked else 'NO'}")
     finally:

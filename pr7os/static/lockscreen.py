@@ -7,8 +7,11 @@ The lock screen is Plasma's shell package (org.kde.plasma.desktop/contents/locks
 its QML also unlocks the session; so its logic stays Plasma's. Exact edits, each anchored to text that must appear
 once: LockScreenUi.qml shows ParagonClock (put beside it) instead of Breeze's Clock; MainBlock.qml gives the password
 field and the unlock button the family's backgrounds; UserDelegate.qml draws the gradient ring behind the picture.
-All edits are checked first: if any anchor is missing (Plasma changed), nothing is written and the build stops. The
-edited files are diverted (dpkg-divert), so a Plasma update can't put back a version these edits don't match.
+All edits are checked first. The edited files are diverted (dpkg-divert): Plasma's own versions are kept beside them as
+<file>.paragon-orig, and every run (an update, or a Plasma update through the package's dpkg triggers) starts again
+from those, so it can run any number of times. When Plasma's files no longer have the anchors (a newer Plasma), the
+lock screen goes back to Plasma's own design (diversions removed) instead of half-changed; with --strict (the ISO's
+build) it stops instead. --restore puts Plasma's design back (the package's removal).
 """
 import shutil
 import subprocess
@@ -85,28 +88,71 @@ def locate(root: Path, rel: str) -> Path:
     return found[0]
 
 
+def original(path: Path) -> Path:
+    """Plasma's own version of a file: beside it once diverted, the file itself before."""
+    kept = path.with_name(path.name + ".paragon-orig")
+    return kept if kept.exists() else path
+
+
 def plan(root: Path) -> list[tuple[Path, str]]:
     out = []
     for rel, edits in EDITS:
         path = locate(root, rel)
-        text = path.read_text(encoding="utf-8")
+        text = original(path).read_text(encoding="utf-8")
         for old, new in edits:
             n = text.count(old)
             if n != 1:
-                raise SystemExit(f"lockscreen: {path} has {n} of the text this edit expects; nothing changed")
+                raise ValueError(f"{path}: {n} of the text an edit expects")
             text = text.replace(old, new)
         out.append((path, text))
     return out
 
 
+def divert(root: Path, path: Path, add: bool) -> None:
+    """Keep Plasma's file beside ours (add) or put it back (remove); a test root has no dpkg: plain renames."""
+    kept = path.with_name(path.name + ".paragon-orig")
+    if root == Path("/"):
+        listed = subprocess.run(["dpkg-divert", "--list", str(path)], capture_output=True, text=True).stdout
+        if add and "paragon" not in listed:
+            subprocess.run(["dpkg-divert", "--package", "paragon", "--divert", str(kept), "--rename", "--add",
+                            str(path)], check=True)
+        elif not add and "paragon" in listed:
+            path.unlink(missing_ok=True)
+            subprocess.run(["dpkg-divert", "--package", "paragon", "--rename", "--remove", str(path)], check=True)
+    elif add and not kept.exists():
+        path.rename(kept)
+    elif not add and kept.exists():
+        kept.replace(path)
+
+
+def restore(root: Path) -> None:
+    for rel, _edits in EDITS:
+        try:
+            divert(root, locate(root, rel), add=False)
+        except SystemExit:
+            continue
+    (root / SHELL / "ParagonClock.qml").unlink(missing_ok=True)
+
+
 def main(argv: list[str]) -> int:
-    root = Path(argv[0]) if argv else Path("/")
-    edits = plan(root)                       # every edit checked before anything is written
+    strict = "--strict" in argv
+    args = [a for a in argv if not a.startswith("--")]
+    root = Path(args[0]) if args else Path("/")
+    if "--restore" in argv:
+        restore(root)
+        print("lockscreen: Plasma's own design")
+        return 0
+    try:
+        edits = plan(root)                       # every edit checked before anything is written
+    except ValueError as e:
+        if strict:
+            raise SystemExit(f"lockscreen: {e}; nothing changed")
+        restore(root)
+        print(f"lockscreen: {e}: this Plasma's lock screen is newer than these edits; Plasma's own design is kept")
+        return 0
     here = Path(__file__).resolve().parent
     for path, text in edits:
-        if root == Path("/"):
-            subprocess.run(["dpkg-divert", "--package", "paragon", "--divert", f"{path}.paragon-orig", "--rename",
-                            "--add", str(path)], check=True)
+        divert(root, path, add=True)
         path.write_text(text, encoding="utf-8")
         print(f"lockscreen: {path}")
     shutil.copy2(here / "lockscreen" / "ParagonClock.qml", root / SHELL / "ParagonClock.qml")
