@@ -19,7 +19,7 @@ a live ISO with the Calamares installer. The owner writes Python; explain the wh
   `PR7OS_FAMILY`) to `/opt/paragon/apps/<repo>/`, one venv `/opt/paragon/venv` built in the image from the merged
   requirements (PySide6 as Essentials + Addons + Pdf: no web engine), launchers `/usr/bin/pr7-<x>`, menu entries,
   icons, `/etc/xdg/mimeapps.list` (folders PR7-E, images PR7-P, PDF PR7-R, media PR7-M, text PR7-W, archives PR7-Z).
-  Left out for now (`LEFT_OUT`): AR, UN, U (Windows-only), CB, LN, IS (global keys, Wayland, NTFS). `App.actions`
+  Left out (`LEFT_OUT`): only U (Windows setups; PR7-OS Update does its job). `App.actions`
   (id, name, args, shortcut) become menu actions; with a shortcut the entry is also copied to /usr/share/kglobalaccel
   (Plasma registers X-KDE-Shortcuts from there: PR7-Q owns Print); `App.autostart` -> /etc/xdg/autostart. Other apps'
   keys are taken in `setup_look.py`: Spectacle's kglobalaccel entry diverted away (`spectacle_keys_off`), KRunner's
@@ -83,7 +83,8 @@ a live ISO with the Calamares installer. The owner writes Python; explain the wh
   capitals only, one weight; `assets.UI_FONT`, Plasma's fonts a size up), except the login password field and GRUB's
   command line (Inter) and terminals (fixed-width). The apps keep asking for Inter: PR7-OS packages them without it and
   their launchers set FONTCONFIG_FILE=/etc/paragon/fonts-apps.conf (`apps.FONTS_APPS`: Inter rejected, aliased to
-  Bebas Neue). Mock-up: `tools/mockup.py` (docs/mockup).
+  Bebas Neue); the launcher skips that when ~/.config/paragon/font says inter (Welcome's FONT, which also writes
+  Plasma's font keys with kwriteconfig6; login / boot stay Bebas Neue). Mock-up: `tools/mockup.py` (docs/mockup).
 
 ## Rules
 

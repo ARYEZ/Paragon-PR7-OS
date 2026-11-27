@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.4.2
+
+- **PR7-AR Startup** and **PR7-UN Uninstaller** join PR7-OS (both now run on Linux): every Paragon app is here but PR7-U
+  (it installs Windows setups; PR7-OS Update does that job here). PR7-AR shows what starts with the system and with you
+  (autostart entries, systemd services and timers, cron, modules) and switches each off its own way; PR7-UN uninstalls
+  apt and Flatpak programs, asks apt first what a removal would take with it, and cleans up the leftovers.
+- **A font switch in Paragon Welcome**: Bebas Neue (PR7-OS's) or Inter, for your account: Plasma's fonts, every Paragon
+  app, Welcome and PR7-OS Update. Sign out and back in to see it everywhere. The login screen and the boot stay in Bebas
+  Neue (they're every account's).
+
 ## 0.4.1
 
 - **Undo an update.** PR7-OS Update has GO BACK: it installs the release before the one you have again (its own
