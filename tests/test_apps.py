@@ -102,3 +102,11 @@ def test_pr7q_owns_print_through_plasma_and_starts_at_sign_in(tmp_path):
     from pr7os import packages
     assert packages.is_app_file("usr/share/kglobalaccel/pr7-q.desktop")
     assert packages.is_app_file("etc/xdg/autostart/paragon-pr7-q.desktop")
+
+
+def test_ci_downloads_every_app():
+    """CI clones the app repositories from build.yml's APPS list: 0.2.3's first build had no PR7-Q (q missing)."""
+    import re as _re
+    workflow = (Path(__file__).resolve().parents[1] / ".github/workflows/build.yml").read_text()
+    listed = set(_re.search(r'^  APPS: "([^"]+)"', workflow, _re.M).group(1).split())
+    assert listed == {a.key for a in apps.APPS}
