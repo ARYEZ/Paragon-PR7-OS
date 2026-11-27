@@ -50,11 +50,16 @@ a live ISO with the Calamares installer. The owner writes Python; explain the wh
   ring; MainBlock.qml's `import QtQuick 2.2` raised to 2.15, or Gradient.orientation fails the file), checks all
   of them before writing, diverts the files. `tests/data/plasma-6.3.6` holds Plasma's own files for
   the tests; on a Plasma upgrade, refresh them and re-check the anchors. The boot test locks (Meta+L) and unlocks.
-- **CI** (`.github/workflows/build.yml`): tests, then the ISO (ubuntu runner, docker debian:trixie), then
-  `tools/boot_test.py` boots it in QEMU/KVM (UEFI: boot menu, splash, desktop; direct kernel with
-  `live-config.noautologin`: login screen, password "live", desktop) and pushes the screenshots to the
-  **ci-boot-screens** branch (CI only; fetch it to look: release downloads are blocked from the session). A new
-  `__version__` publishes the ISO (split into parts over 2 GB); **0.0.x versions never publish**.
+- **CI** (`.github/workflows/build.yml`): tests, update-test, then **packages** on every push: `live/packages.sh`
+  (venv + the five .debs, debian:trixie) and `live/install_test.sh` (all five installed with apt into a clean Debian 13,
+  then the look / firewall / Flathub / every app import checked); a new non-x.y.0 `__version__` is published from there
+  (packages + manifest, no ISO; the notes link the newest release that has one). The **iso** job runs only for x.y.0
+  versions, `v*` tags or Run workflow with "iso": `live/build.sh` (calls packages.sh), `tools/boot_test.py` boots it in
+  QEMU/KVM (UEFI: boot menu, splash, desktop; direct kernel with `live-config.noautologin`: login screen, password
+  "live", desktop, lock / unlock, firewall, Flathub, avahi) and pushes the screenshots to the **ci-boot-screens** branch
+  (CI only; fetch it to look: release downloads are blocked from the session). An x.y.0 is published by the iso job
+  with its ISO (split into parts over 2 GB); a hand-started ISO of a released version is added to that release.
+  **0.0.x versions never publish**.
 - This session can't reach deb.debian.org: the ISO is only built in CI. Locally: the assets, the login screen
   (`tools/login_preview.py` renders Main.qml with stand-ins for SDDM), the apps starting, the live menus' theming.
 

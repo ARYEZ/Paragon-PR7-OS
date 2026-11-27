@@ -10,6 +10,10 @@ on:
         description: "Publish a release (tag v<version>) from this commit"
         type: boolean
         default: false
+      iso:
+        description: "Build and boot-test the ISO (added to this version's release if it's already out)"
+        type: boolean
+        default: false
 
 env:
   APPS: "e w l f r p m z db hx wm fs tm hb bk pm sm hw du"
@@ -48,8 +52,100 @@ jobs:
           docker run --rm -v "$PWD:/work" -w /work debian:trixie bash -c \
             "apt-get update -qq && apt-get install -y -qq python3 dpkg-dev > /dev/null && python3 tools/update_test.py"
 
-  iso:
+  packages:
+    # every version: the five packages, installed into a clean Debian 13 the way the updater installs them, then
+    # published (the update channel). The ISO is built only for x.y.0 versions, tags or by hand (the iso job).
     needs: [test, update-test]
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+      iso: ${{ steps.version.outputs.iso }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Which version, and does it get an ISO?
+        id: version
+        run: |
+          v=$(python3 -c 'import pr7os; print(pr7os.__version__)')
+          echo "version=$v" >> "$GITHUB_OUTPUT"
+          echo "PR7OS_VERSION=$v" >> "$GITHUB_ENV"
+          iso=false
+          case "$v" in *.0) iso=true;; esac
+          if [ "${{ startsWith(github.ref, 'refs/tags/v') }}" = true ] || [ "${{ inputs.iso }}" = true ]; then iso=true; fi
+          echo "iso=$iso" >> "$GITHUB_OUTPUT"
+          echo "PR7-OS $v: ISO $iso"
+      - name: The family's apps
+        run: |
+          mkdir -p family
+          for a in $APPS; do
+            git clone -q --depth 1 "https://github.com/ARYEZ/Paragon-PR7-${a^^}" "family/paragon-pr7-$a"
+          done
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+      - name: The packages' files (theme and apps)
+        run: |
+          sudo apt-get update -q
+          sudo apt-get install -y -q libegl1 libgl1 libxkbcommon0 libxcb-cursor0 libfontconfig1
+          pip install -q PySide6 Pillow
+          QT_QPA_PLATFORM=offscreen python -m pr7os.assets build/root
+          python -m pr7os.apps family build/root
+      - name: Build the packages (in Debian 13)
+        run: |
+          docker run --rm -v "$PWD:/work" debian:trixie bash /work/live/packages.sh
+          sudo chown -R "$USER" debs
+          cp debs/paragon-pr7os-updates_*_all.deb debs/paragon-pr7os-updates.deb
+          ls -la debs
+      - name: Install them into a clean Debian 13, as the updater does, and check what they set up
+        run: docker run --rm -v "$PWD:/work" debian:trixie bash /work/live/install_test.sh
+      - name: Is this version released yet? (x.y.0 versions are published by the iso job, with their ISO)
+        if: github.event_name == 'push' && !startsWith(github.ref, 'refs/tags/') && steps.version.outputs.iso != 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          case "$PR7OS_VERSION" in 0.0.*) echo "$PR7OS_VERSION is a development build: nothing to publish."; exit 0;; esac
+          if gh release view "v$PR7OS_VERSION" --repo "${{ github.repository }}" > /dev/null 2>&1; then
+            echo "v$PR7OS_VERSION is already released."
+          else
+            echo "v$PR7OS_VERSION has no release yet: publishing it."; echo "AUTO_RELEASE=1" >> "$GITHUB_ENV"
+          fi
+      - name: Release notes
+        if: env.AUTO_RELEASE == '1' || (github.event_name == 'workflow_dispatch' && inputs.release && steps.version.outputs.iso != 'true')
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          iso_tag=$(gh api "repos/${{ github.repository }}/releases?per_page=50" \
+            --jq '[.[] | select(any(.assets[]; .name | endswith(".iso.sha256")))][0].tag_name // ""')
+          ISO_TAG="$iso_tag" python - <<'PY'
+          import os, re
+          v, iso = os.environ["PR7OS_VERSION"], os.environ.get("ISO_TAG", "")
+          text = open("CHANGELOG.md", encoding="utf-8").read()
+          m = re.search(r"^## " + re.escape(v) + r"\s*$(.*?)(?=^## |\Z)", text, re.M | re.S)
+          notes = (m.group(1).strip() if m else "Paragon PR7-OS " + v) + "\n"
+          notes += ("\n**An update, no ISO**: installed machines get it from PR7-OS Update (or `sudo "
+                    "/usr/libexec/paragon/pr7os-update-helper` over SSH).")
+          if iso:
+              notes += (f" For a new install, use the ISO of [{iso}](https://github.com/ARYEZ/Paragon-PR7-OS/releases/"
+                        f"tag/{iso}) and update afterwards.")
+          open("release-notes.md", "w", encoding="utf-8").write(notes + "\n")
+          PY
+          cat release-notes.md
+      - name: Release (the packages and the manifest)
+        if: env.AUTO_RELEASE == '1' || (github.event_name == 'workflow_dispatch' && inputs.release && steps.version.outputs.iso != 'true')
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: v${{ env.PR7OS_VERSION }}
+          target_commitish: ${{ github.sha }}
+          body_path: release-notes.md
+          files: |
+            debs/*.deb
+            debs/pr7os-update.json
+          name: Paragon PR7-OS v${{ env.PR7OS_VERSION }}
+
+  iso:
+    needs: [test, update-test, packages]
+    if: needs.packages.outputs.iso == 'true'
     runs-on: ubuntu-24.04
     timeout-minutes: 180
     permissions:
@@ -108,19 +204,23 @@ jobs:
           git add -A
           git -c user.name="PR7-OS CI" -c user.email="ci@users.noreply.github.com" commit -qm "Boot test of ${GITHUB_SHA::7}"
           git push -qf "https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}" ci-boot-screens
-      - name: Is this version released yet? (pushing a new version publishes it; 0.0.x never does)
-        if: github.event_name == 'push' && !startsWith(github.ref, 'refs/tags/')
+      - name: Is this version released yet? (an x.y.0 version is published here, with its ISO; 0.0.x never is)
+        if: github.event_name != 'pull_request'
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
           case "$PR7OS_VERSION" in 0.0.*) echo "$PR7OS_VERSION is a development build: nothing to publish."; exit 0;; esac
           if gh release view "v$PR7OS_VERSION" --repo "${{ github.repository }}" > /dev/null 2>&1; then
-            echo "v$PR7OS_VERSION is already released."
-          else
+            if [ "${{ github.event_name }}" = workflow_dispatch ]; then
+              echo "v$PR7OS_VERSION is already released: its ISO is added to it."; echo "ADD_ISO=1" >> "$GITHUB_ENV"
+            else
+              echo "v$PR7OS_VERSION is already released."
+            fi
+          elif [ "${{ github.event_name }}" = push ] || [ "${{ inputs.release }}" = true ]; then
             echo "v$PR7OS_VERSION has no release yet: publishing it."; echo "AUTO_RELEASE=1" >> "$GITHUB_ENV"
           fi
       - name: Release notes and the download (a GitHub release file holds at most 2 GB)
-        if: startsWith(github.ref, 'refs/tags/v') || (github.event_name == 'workflow_dispatch' && inputs.release) || env.AUTO_RELEASE == '1'
+        if: env.AUTO_RELEASE == '1' || env.ADD_ISO == '1'
         run: |
           python - <<'PY'
           import os, re
@@ -136,11 +236,18 @@ jobs:
             printf '\nThe ISO comes in parts (GitHub release files stop at 2 GB). Join them before writing to a USB stick:\n\n    cat %s.part* > %s        (Windows: copy /b %s.part0+%s.part1 %s)\n\nthen check it with the .sha256 file.\n' "$ISO" "$ISO" "$ISO" "$ISO" "$ISO" >> release-notes.md
           fi
           ls -la PR7-OS-*
+      - name: The ISO added to the version's release (its packages and notes stay as they were)
+        if: env.ADD_ISO == '1'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release upload "v$PR7OS_VERSION" --repo "${{ github.repository }}" --clobber PR7-OS-*.iso* \
+            shots/desktop.png shots/login.png shots/boot_menu.png shots/lock_screen.png
       - name: Release
-        if: startsWith(github.ref, 'refs/tags/v') || (github.event_name == 'workflow_dispatch' && inputs.release) || env.AUTO_RELEASE == '1'
+        if: env.AUTO_RELEASE == '1'
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: ${{ startsWith(github.ref, 'refs/tags/v') && github.ref_name || format('v{0}', env.PR7OS_VERSION) }}
+          tag_name: v${{ env.PR7OS_VERSION }}
           target_commitish: ${{ github.sha }}
           body_path: release-notes.md
           files: |

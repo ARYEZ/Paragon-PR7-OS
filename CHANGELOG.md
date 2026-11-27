@@ -19,6 +19,8 @@ machines too: open PR7-OS Update, or wait for the notification.
   nothing added to Debian) and starts it afterwards. NVIDIA cards need NVIDIA's driver from Debian's non-free section.
 - **Paragon account picture**: the gradient 7 instead of Debian's swirl on the lock screen, for accounts that still had
   Debian's (a picture you chose is never touched).
+- From the next version on, updates are published without a new ISO (they come out in minutes instead of an hour);
+  x.y.0 versions still come with one, booted and checked.
 
 ## 0.2.0
 
