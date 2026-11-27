@@ -28,7 +28,7 @@ Rectangle {
         anchors.horizontalCenter: parent.horizontalCenter
         y: parent.height * 0.55
         text: show.slides[show.slide][0]
-        color: "#E8E8EA"; font.family: "Inter"; font.pixelSize: 20; font.weight: Font.DemiBold; font.letterSpacing: 2
+        color: "#E8E8EA"; font.family: "Bebas Neue"; font.pixelSize: 26; font.letterSpacing: 2
     }
     Rectangle {
         anchors.horizontalCenter: parent.horizontalCenter
@@ -46,6 +46,6 @@ Rectangle {
         anchors.top: heading.bottom; anchors.topMargin: 32
         horizontalAlignment: Text.AlignHCenter
         text: show.slides[show.slide][1]
-        color: "#B9B5B8"; font.family: "Inter"; font.pixelSize: 15; lineHeight: 1.3
+        color: "#B9B5B8"; font.family: "Bebas Neue"; font.pixelSize: 19; lineHeight: 1.3
     }
 }

@@ -113,7 +113,7 @@ def test_global_themes(built, finish):
     assert meta["KPackageStructure"] == "Plasma/LookAndFeel"
     defaults = (d / "contents/defaults").read_text()
     assert f"theme=__aurorae__svg__Paragon-{finish.title()}" in defaults
-    assert f"ColorScheme=Paragon{finish.title()}" in defaults and "font=Inter," in defaults
+    assert f"ColorScheme=Paragon{finish.title()}" in defaults and "font=Bebas Neue," in defaults   # the owner's font
     layout = (d / "contents/layouts/org.kde.plasma.desktop-layout.js").read_text()
     assert "org.kde.plasma.kickoff" in layout and "pr7os-start" in layout and "panel.floating = true" in layout
     assert layout.count("{") == layout.count("}") and layout.count("(") == layout.count(")")

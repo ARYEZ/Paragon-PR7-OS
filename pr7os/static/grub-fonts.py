@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Make the boot menu's fonts (GRUB .pf2 files) from Inter and write their real names into theme.txt.
+"""Make the boot menu's fonts (GRUB .pf2 files) from Bebas Neue (the menu) and Inter (the command line) and write their real names into theme.txt.
 
     python3 grub-fonts.py THEME_DIR FONTS_DIR
 
@@ -13,8 +13,8 @@ from pathlib import Path
 
 # (font file, the name theme.txt asks for, sizes, family name given to grub-mkfont). grub-mkfont names SemiBold
 # "Inter Regular" like the regular weight unless it gets a family name of its own; -n gives it one.
-WANT = [("Inter-Regular.ttf", "Inter Regular", (12, 14, 16, 18), None),
-        ("Inter-SemiBold.ttf", "Inter SemiBold", (12, 18), "Inter SemiBold")]
+WANT = [("BebasNeue-Regular.ttf", "Bebas Neue Regular", (16, 18, 24), None),
+        ("Inter-Regular.ttf", "Inter Regular", (16,), None)]
 
 
 def pf2_name(path: Path) -> str:

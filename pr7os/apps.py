@@ -111,9 +111,27 @@ LEFT_OUT = {"AR": "Autoruns: Windows' startup places", "UN": "uninstaller: Windo
             "U": "family installer: Windows setups"}
 
 
+# The apps' text in Bebas Neue on PR7-OS (the owner's choice) without touching their code: their own Inter isn't
+# packaged here, and their launcher gives them this font configuration, where Inter is hidden and a request for it
+# answers with Bebas Neue (Qt asks fontconfig for a family it can't find). Monospaced fonts are left as they are.
+FONTS_APPS = """<?xml version="1.0"?>
+<!DOCTYPE fontconfig SYSTEM "urn:fontconfig:fonts.dtd">
+<!-- Paragon PR7-OS: the Paragon apps' fonts (their launchers set FONTCONFIG_FILE to this file) -->
+<fontconfig>
+  <include ignore_missing="yes">/etc/fonts/fonts.conf</include>
+  <selectfont><rejectfont><pattern><patelt name="family"><string>Inter</string></patelt></pattern></rejectfont></selectfont>
+  <match target="pattern">
+    <test qual="any" name="family"><string>Inter</string></test>
+    <edit name="family" mode="assign" binding="strong"><string>Bebas Neue</string></edit>
+  </match>
+</fontconfig>
+"""
+
+
 def launcher(app: App) -> str:
     return (f"#!/bin/sh\n# Paragon PR7-{app.letter} ({app.generic}) on PR7-OS\n"
             f"export PYTHONPATH=/opt/paragon/apps/{app.repo}\n"
+            "export FONTCONFIG_FILE=/etc/paragon/fonts-apps.conf     # their text in Bebas Neue\n"
             f'exec /opt/paragon/venv/bin/python -m {app.package} "$@"\n')
 
 
@@ -178,7 +196,7 @@ def stage(family: Path, root: Path) -> list[Path]:
         dest = root / "opt/paragon/apps" / app.repo / app.package
         if dest.exists():
             shutil.rmtree(dest)
-        shutil.copytree(src, dest, ignore=shutil.ignore_patterns("__pycache__", "*.pyc"))
+        shutil.copytree(src, dest, ignore=shutil.ignore_patterns("__pycache__", "*.pyc", "Inter-*.ttf"))
         for extra in ("LICENSE", "NOTICE.md", "README.md"):
             if (family / app.repo / extra).exists():
                 shutil.copy2(family / app.repo / extra, dest.parent / extra)
@@ -206,12 +224,15 @@ def stage(family: Path, root: Path) -> list[Path]:
     req = root / "opt/paragon/requirements.txt"
     req.parent.mkdir(parents=True, exist_ok=True)
     req.write_text("\n".join(requirements(family)) + "\n", encoding="utf-8")
+    fonts = root / "etc/paragon/fonts-apps.conf"
+    fonts.parent.mkdir(parents=True, exist_ok=True)
+    fonts.write_text(FONTS_APPS, encoding="utf-8")
     keys = root / "etc/xdg/kglobalshortcutsrc"
     keys.write_text(SHORTCUT_DEFAULTS, encoding="utf-8")
     mime = root / "etc/xdg/mimeapps.list"
     mime.parent.mkdir(parents=True, exist_ok=True)
     mime.write_text(mimeapps(), encoding="utf-8")
-    return out + [req, keys, mime]
+    return out + [req, fonts, keys, mime]
 
 
 def main(argv: list[str] | None = None) -> int:

@@ -110,3 +110,21 @@ def test_ci_downloads_every_app():
     workflow = (Path(__file__).resolve().parents[1] / ".github/workflows/build.yml").read_text()
     listed = set(_re.search(r'^  APPS: "([^"]+)"', workflow, _re.M).group(1).split())
     assert listed == {a.key for a in apps.APPS}
+
+
+def test_the_apps_get_bebas_neue_for_inter(tmp_path):
+    """The apps ask for Inter (their own theme); on PR7-OS their launcher's font configuration hides Inter and answers
+    with Bebas Neue, the owner's font; monospaced text stays monospaced. Checked in a real Qt process, with a copy of
+    PR7-OS's configuration that also sees this repository's fonts (Inter included, as a system copy would be)."""
+    fonts = Path(apps.__file__).resolve().parent / "fonts"
+    conf = tmp_path / "fonts-apps.conf"
+    conf.write_text(apps.FONTS_APPS.replace("</fontconfig>", f"  <dir>{fonts}</dir>\n  <cachedir>{tmp_path / 'cache'}</cachedir>\n</fontconfig>"))
+    probe = ("import os; os.environ['QT_QPA_PLATFORM']='offscreen'\n"
+             "from PySide6.QtGui import QFont, QFontInfo\nfrom PySide6.QtWidgets import QApplication, QLabel\n"
+             "app = QApplication([]); lab = QLabel('x'); lab.setStyleSheet('font-family: Inter;'); lab.ensurePolished()\n"
+             "print(QFontInfo(QFont('Inter')).family(), QFontInfo(lab.font()).family(), "
+             "QFontInfo(QFont('DejaVu Sans Mono')).fixedPitch(), sep='|')")
+    out = subprocess.run([sys.executable, "-c", probe], env=dict(os.environ, FONTCONFIG_FILE=str(conf)),
+                         capture_output=True, text=True, timeout=60).stdout.strip().splitlines()[-1]
+    assert out == "Bebas Neue|Bebas Neue|True"
+    assert "FONTCONFIG_FILE=/etc/paragon/fonts-apps.conf" in apps.launcher(apps.APPS[0])

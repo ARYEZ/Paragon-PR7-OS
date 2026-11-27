@@ -133,7 +133,7 @@ def stylesheet() -> str:
     sel_text = "#FFFFFF" if FINISH == "obsidian" else TEXT              # white on the dark finish, ink on the light
     box_title = "rgba(232,232,234,0.9)" if FINISH == "obsidian" else TEXT_DIM
     return f"""
-* {{ font-family: "Inter"; font-size: 13px; color: {TEXT}; outline: 0; }}
+* {{ font-family: "Bebas Neue"; font-size: 16px; color: {TEXT}; outline: 0; }}
 QMainWindow, QDialog {{ background: {BACKGROUND}; }}
 QToolTip {{ background: {PANEL}; color: {ON_DARK}; border: 1px solid {PANEL_EDGE}; border-radius: 4px; padding: 5px 9px; }}
 

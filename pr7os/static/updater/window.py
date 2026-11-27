@@ -21,9 +21,9 @@ from PySide6.QtWidgets import (QApplication, QHBoxLayout, QLabel, QPlainTextEdit
 
 GRADIENT = "qlineargradient(x1:0, y1:0, x2:1, y2:0, stop:0 #FF0743, stop:0.5 #FA3632, stop:1 #F2781E)"
 STYLE = f"""
-QWidget {{ background: #0C0A0D; color: #E8E8EA; font-family: Inter; font-size: 13px; }}
-QLabel#title {{ font-size: 12px; font-weight: 600; letter-spacing: 2px; color: #8A8A92; }}
-QLabel#heading {{ font-size: 20px; font-weight: 600; }}
+QWidget {{ background: #0C0A0D; color: #E8E8EA; font-family: "Bebas Neue"; font-size: 16px; letter-spacing: 0.5px; }}
+QLabel#title {{ font-size: 15px; font-weight: 600; letter-spacing: 2px; color: #8A8A92; }}
+QLabel#heading {{ font-size: 23px; font-weight: 600; }}
 QLabel#status {{ color: #B9B5B8; }}
 QTextBrowser, QPlainTextEdit {{ background: #060407; border: 1px solid #27222A; border-radius: 8px; padding: 8px; }}
 QPushButton {{ background: #1C1C20; border: 1px solid #3A3238; border-radius: 8px; padding: 9px 18px;

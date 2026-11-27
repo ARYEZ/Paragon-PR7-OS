@@ -58,7 +58,9 @@ def test_live_boot_menus_are_themed(built, tmp_path):
     live_bootloader.main(str(b), str(root))
     theme = (b / "grub-pc/live-theme/theme.txt").read_text()
     fonts = sorted(p.name for p in (b / "grub-pc/live-theme").glob("*.pf2"))
-    assert len(fonts) == 6 and "Inter SemiBold" in theme                    # SemiBold kept a name of its own
+    assert fonts == ["bebas-neue-regular-16.pf2", "bebas-neue-regular-18.pf2", "bebas-neue-regular-24.pf2",
+                     "inter-regular-16.pf2"]                              # the menu in Bebas Neue, the command line Inter
+    assert "Bebas Neue Regular 24" in theme and "Inter SemiBold" not in theme
     assert all(f"loadfont /boot/grub/live-theme/{f}" in (b / "grub-pc/theme.cfg").read_text() for f in fonts)
     assert "Paragon PR7-OS live" in (b / "grub-pc/grub.cfg").read_text()
     assert "set timeout=5" in (b / "grub-pc/config.cfg").read_text()

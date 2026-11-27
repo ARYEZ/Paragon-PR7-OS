@@ -72,7 +72,11 @@ a live ISO with the Calamares installer. The owner writes Python; explain the wh
 ## The look (family rules)
 
 - Colours: the family's only (hues ~318 -> 0 -> 42 deg, pearl and onyx greys); tests check every colour in every
-  generated file and sample the pictures. Inter; labels UPPER CASE. Mock-up: `tools/mockup.py` (docs/mockup).
+  generated file and sample the pictures. **Font: Bebas Neue everywhere on PR7-OS** (the owner's choice, 0.3.1:
+  capitals only, one weight; `assets.UI_FONT`, Plasma's fonts a size up), except the login password field and GRUB's
+  command line (Inter) and terminals (fixed-width). The apps keep asking for Inter: PR7-OS packages them without it and
+  their launchers set FONTCONFIG_FILE=/etc/paragon/fonts-apps.conf (`apps.FONTS_APPS`: Inter rejected, aliased to
+  Bebas Neue). Mock-up: `tools/mockup.py` (docs/mockup).
 
 ## Rules
 

@@ -10,12 +10,12 @@ ColumnLayout {
 
     Text {
         text: Qt.formatTime(timeSource.data["Local"]["DateTime"], Qt.locale(), Locale.ShortFormat)
-        color: "#E8E8EA"; font.family: "Inter"; font.pixelSize: 112
+        color: "#E8E8EA"; font.family: "Bebas Neue"; font.pixelSize: 132
         Layout.alignment: Qt.AlignHCenter
     }
     Text {
         text: Qt.formatDate(timeSource.data["Local"]["DateTime"], "dddd d MMMM").toUpperCase()
-        color: "#B9B5B8"; font.family: "Inter"; font.pixelSize: 15; font.weight: Font.DemiBold
+        color: "#B9B5B8"; font.family: "Bebas Neue"; font.pixelSize: 20
         font.letterSpacing: 2.5
         Layout.alignment: Qt.AlignHCenter
     }

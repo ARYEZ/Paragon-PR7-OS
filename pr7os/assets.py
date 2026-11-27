@@ -203,7 +203,7 @@ def face_image(size: int = 256) -> QImage:
 def text_image(s: str, px: int, hex_: str, w: int, h: int, spacing: float = 0, bold: bool = False) -> QImage:
     from PySide6.QtGui import QFont
     img, p = new_image(w, h)
-    f = QFont("Inter")
+    f = QFont(UI_FONT)
     f.setPixelSize(px)
     f.setWeight(QFont.Weight.DemiBold if bold else QFont.Weight.Normal)
     if spacing:
@@ -321,9 +321,12 @@ def aurorae(finish: str) -> dict[str, str]:
 
 
 # --------------------------------------------------------------------------- Plasma: global themes and defaults
-FONT = "Inter,10,-1,5,400,0,0,0,0,0,0,0,0,0,0,1"
-FONT_SMALL = "Inter,8,-1,5,400,0,0,0,0,0,0,0,0,0,0,1"
-FONT_BOLD = "Inter,10,-1,5,600,0,0,0,0,0,0,0,0,0,0,1"
+# Bebas Neue everywhere (the owner's choice; capitals only, one weight): a size up from Inter's, it's a tall condensed face.
+# Terminals keep the fixed-width font; the login screen's password field keeps Inter.
+UI_FONT = "Bebas Neue"
+FONT = "Bebas Neue,12,-1,5,400,0,0,0,0,0,0,0,0,0,0,1"
+FONT_SMALL = "Bebas Neue,10,-1,5,400,0,0,0,0,0,0,0,0,0,0,1"
+FONT_BOLD = "Bebas Neue,12,-1,5,400,0,0,0,0,0,0,0,0,0,0,1"
 FONT_MONO = "DejaVu Sans Mono,10,-1,5,400,0,0,0,0,0,0,0,0,0,0,1"
 
 
@@ -470,8 +473,8 @@ terminal-box: "terminal_*.png"
     top = 35%
     width = 42%
     height = 32%
-    item_font = "Inter Regular 18"
-    selected_item_font = "Inter SemiBold 18"
+    item_font = "Bebas Neue Regular 24"
+    selected_item_font = "Bebas Neue Regular 24"
     item_color = "#C9C5C8"
     selected_item_color = "#FFFFFF"
     item_height = 44
@@ -490,7 +493,7 @@ terminal-box: "terminal_*.png"
     width = 100%
     align = "center"
     color = "#8A8A92"
-    font = "Inter SemiBold 12"
+    font = "Bebas Neue Regular 16"
     text = "UP / DOWN  CHOOSE     ENTER  START     E  EDIT     C  COMMAND LINE"
 }
 
@@ -501,7 +504,7 @@ terminal-box: "terminal_*.png"
     width = 100%
     align = "center"
     color = "#B9B5B8"
-    font = "Inter Regular 14"
+    font = "Bebas Neue Regular 18"
     text = "Starting Paragon PR7-OS in %d s"
 }
 """
@@ -568,7 +571,7 @@ def build(root: Path) -> list[Path]:
     out.append(write(root, f"{sddm}/mark.png", mark_image(520, 100)))
     out.append(write(root, "etc/sddm.conf.d/10-paragon.conf",
                      "[General]\n# no on-screen keyboard over the password (Debian turns Qt's virtual keyboard on)\n"
-                     "InputMethod=\n\n[Theme]\nCurrent=paragon\nCursorTheme=breeze_cursors\nFont=Inter\n"))
+                     "InputMethod=\n\n[Theme]\nCurrent=paragon\nCursorTheme=breeze_cursors\nFont=Bebas Neue\n"))
     # boot splash (Plymouth)
     ply = f"{share}/plymouth/themes/paragon"
     for f in ("paragon.plymouth", "paragon.script"):
@@ -621,12 +624,13 @@ def build(root: Path) -> list[Path]:
     out.append(write(root, f"{cal}/logo.png", icon))
     out.append(write(root, f"{cal}/welcome.png", mark_image(1040, 200)))
     out.append(write(root, f"{share}/icons/hicolor/256x256/apps/pr7os.png", icon))
-    # fonts: the family's Inter, system-wide (SDDM, Plymouth, GRUB's fonts are made from these by the hook)
+    # fonts, system-wide: Bebas Neue (everything) and Inter (the login password field, GRUB's command line); the
+    # folder keeps its first name so updates replace files in place. GRUB's fonts are made from these by the hook
     for ttf in sorted((HERE / "fonts").glob("*.ttf")):
         out.append(write(root, f"{share}/fonts/truetype/paragon-inter/{ttf.name}", ttf.read_bytes()))
-    lic = HERE / "fonts" / "OFL-LICENSE.txt"
-    if lic.exists():
-        out.append(write(root, f"{share}/fonts/truetype/paragon-inter/OFL-LICENSE.txt", lic.read_bytes()))
+    for lic in ("OFL-LICENSE.txt", "BebasNeue-OFL.txt"):
+        if (HERE / "fonts" / lic).exists():
+            out.append(write(root, f"{share}/fonts/truetype/paragon-inter/{lic}", (HERE / "fonts" / lic).read_bytes()))
     return out
 
 

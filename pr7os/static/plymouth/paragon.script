@@ -37,11 +37,11 @@ Plymouth.SetBootProgressFunction(progress_callback);
 prompt = Sprite();
 dots = Sprite();
 fun password_callback(text, bullets) {
-    prompt.SetImage(Image.Text(text, 0.91, 0.91, 0.92, 1, "Inter 14"));
+    prompt.SetImage(Image.Text(text, 0.91, 0.91, 0.92, 1, "Bebas Neue 18"));
     prompt.SetPosition(cx - prompt.GetImage().GetWidth() / 2, track_y + 40, 3);
     s = "";
     for (i = 0; i < bullets; i++) s += "* ";
-    dots.SetImage(Image.Text(s, 1, 0.48, 0.1, 1, "Inter 18"));
+    dots.SetImage(Image.Text(s, 1, 0.48, 0.1, 1, "Bebas Neue 22"));
     dots.SetPosition(cx - dots.GetImage().GetWidth() / 2, track_y + 72, 3);
 }
 Plymouth.SetDisplayPasswordFunction(password_callback);
@@ -54,7 +54,7 @@ Plymouth.SetDisplayNormalFunction(normal_callback);
 
 message = Sprite();
 fun message_callback(text) {
-    message.SetImage(Image.Text(text, 0.54, 0.54, 0.57, 1, "Inter 12"));
+    message.SetImage(Image.Text(text, 0.54, 0.54, 0.57, 1, "Bebas Neue 16"));
     message.SetPosition(cx - message.GetImage().GetWidth() / 2, track_y + 110, 3);
 }
 Plymouth.SetMessageFunction(message_callback);

@@ -8,7 +8,7 @@ Rectangle {
     height: 1080
     color: "#060407"
 
-    readonly property string family: "Inter"
+    readonly property string family: "Bebas Neue"     // everything but the password field (Inter: the owner's exception)
     property int userIndex: userModel.lastIndex >= 0 ? userModel.lastIndex : 0
     property int sessionIndex: sessionModel.lastIndex >= 0 ? sessionModel.lastIndex : 0
     property string error: ""
@@ -62,7 +62,7 @@ Rectangle {
         x: 48; y: 40
         spacing: 14
         Text {
-            text: "PARAGON"; color: "#E8E8EA"; font.family: root.family; font.pixelSize: 22
+            text: "PARAGON"; color: "#E8E8EA"; font.family: root.family; font.pixelSize: 26
             anchors.verticalCenter: parent.verticalCenter
         }
         Image { source: "mark.png"; height: 40; fillMode: Image.PreserveAspectFit; smooth: true }
@@ -73,14 +73,14 @@ Rectangle {
         id: clock
         anchors.horizontalCenter: parent.horizontalCenter
         y: 170
-        color: "#E8E8EA"; font.family: root.family; font.pixelSize: 112
+        color: "#E8E8EA"; font.family: root.family; font.pixelSize: 128
         text: Qt.formatTime(new Date(), "hh:mm")
     }
     Text {
         id: date
         anchors.horizontalCenter: parent.horizontalCenter
         anchors.top: clock.bottom
-        color: "#B9B5B8"; font.family: root.family; font.pixelSize: 15; font.weight: Font.DemiBold
+        color: "#B9B5B8"; font.family: root.family; font.pixelSize: 19
         font.letterSpacing: 2.5
         text: Qt.formatDate(new Date(), "dddd d MMMM").toUpperCase()
     }
@@ -113,7 +113,7 @@ Rectangle {
                 anchors.centerIn: parent
                 visible: picture.status !== Image.Ready
                 text: users.currentItem ? users.currentItem.shown.charAt(0).toUpperCase() : ""
-                color: "#E8E8EA"; font.family: root.family; font.pixelSize: 46; font.weight: Font.DemiBold
+                color: "#E8E8EA"; font.family: root.family; font.pixelSize: 62
             }
             Image {
                 id: picture
@@ -134,7 +134,7 @@ Rectangle {
         anchors.horizontalCenter: parent.horizontalCenter
         anchors.top: ring.bottom; anchors.topMargin: 16
         text: users.currentItem ? users.currentItem.shown : ""
-        color: "#E8E8EA"; font.family: root.family; font.pixelSize: 22; font.weight: Font.DemiBold
+        color: "#E8E8EA"; font.family: root.family; font.pixelSize: 26
     }
 
     // the password
@@ -152,7 +152,7 @@ Rectangle {
             anchors.verticalCenter: parent.verticalCenter
             echoMode: TextInput.Password
             passwordCharacter: "•"
-            color: "#E8E8EA"; font.family: root.family; font.pixelSize: 16
+            color: "#E8E8EA"; font.family: "Inter"; font.pixelSize: 16
             selectionColor: "#E8303A"
             focus: true
             clip: true
@@ -162,7 +162,7 @@ Rectangle {
         Text {
             anchors.left: password.left; anchors.verticalCenter: parent.verticalCenter
             visible: password.text.length === 0
-            text: "PASSWORD"; color: "#6E6A70"; font.family: root.family; font.pixelSize: 13
+            text: "PASSWORD"; color: "#6E6A70"; font.family: root.family; font.pixelSize: 17
             font.weight: Font.DemiBold; font.letterSpacing: 1.5
         }
         Rectangle {      // the family gradient under the field
@@ -187,7 +187,7 @@ Rectangle {
             }
             Text {
                 anchors.centerIn: parent
-                text: "→"; color: "#FFFFFF"; font.family: root.family; font.pixelSize: 20
+                text: "→"; color: "#FFFFFF"; font.family: root.family; font.pixelSize: 24
                 font.weight: Font.DemiBold
             }
             MouseArea { anchors.fill: parent; onClicked: root.login() }
@@ -198,7 +198,7 @@ Rectangle {
         anchors.horizontalCenter: parent.horizontalCenter
         anchors.top: field.bottom; anchors.topMargin: 14
         color: root.error.length ? "#FF3B2F" : "#8A8A92"
-        font.family: root.family; font.pixelSize: 12; font.weight: Font.DemiBold; font.letterSpacing: 1.5
+        font.family: root.family; font.pixelSize: 16; font.letterSpacing: 1.5
         text: {
             if (root.error.length) return root.error
             var caps = (typeof keyboard !== "undefined" && keyboard && keyboard.capsLock) ? "CAPS LOCK IS ON"
@@ -216,12 +216,12 @@ Rectangle {
         anchors.bottom: parent.bottom; anchors.bottomMargin: 48
         spacing: 14
         Text {
-            text: "SESSION"; color: "#8A8A92"; font.family: root.family; font.pixelSize: 12
+            text: "SESSION"; color: "#8A8A92"; font.family: root.family; font.pixelSize: 16
             font.weight: Font.DemiBold; font.letterSpacing: 1.5
         }
         Text {
             text: sessions.currentItem ? sessions.currentItem.shown.toUpperCase() : ""
-            color: "#E8E8EA"; font.family: root.family; font.pixelSize: 12
+            color: "#E8E8EA"; font.family: root.family; font.pixelSize: 16
             font.weight: Font.DemiBold; font.letterSpacing: 1.5
             MouseArea {
                 anchors.fill: parent
@@ -248,7 +248,7 @@ Rectangle {
                 border.color: "#3A3238"; border.width: 1
                 Text {
                     anchors.centerIn: parent
-                    text: modelData.label; color: "#E8E8EA"; font.family: root.family; font.pixelSize: 12
+                    text: modelData.label; color: "#E8E8EA"; font.family: root.family; font.pixelSize: 16
                     font.weight: Font.DemiBold; font.letterSpacing: 1.2
                 }
                 MouseArea { id: hover; anchors.fill: parent; hoverEnabled: true; onClicked: modelData.act() }

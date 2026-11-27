@@ -26,10 +26,10 @@ from PySide6.QtWidgets import (QApplication, QCheckBox, QFrame, QGridLayout, QHB
 
 GRADIENT = "qlineargradient(x1:0, y1:0, x2:1, y2:0, stop:0 #FF0743, stop:0.5 #FA3632, stop:1 #F2781E)"
 STYLE = f"""
-QWidget {{ background: #0C0A0D; color: #E8E8EA; font-family: Inter; font-size: 13px; }}
-QLabel#title {{ font-size: 12px; font-weight: 600; letter-spacing: 2px; color: #8A8A92; }}
-QLabel#heading {{ font-size: 22px; font-weight: 600; }}
-QLabel#label {{ font-size: 12px; font-weight: 600; letter-spacing: 2px; color: #B9B5B8; }}
+QWidget {{ background: #0C0A0D; color: #E8E8EA; font-family: "Bebas Neue"; font-size: 16px; letter-spacing: 0.5px; }}
+QLabel#title {{ font-size: 15px; font-weight: 600; letter-spacing: 2px; color: #8A8A92; }}
+QLabel#heading {{ font-size: 25px; font-weight: 600; }}
+QLabel#label {{ font-size: 15px; font-weight: 600; letter-spacing: 2px; color: #B9B5B8; }}
 QLabel#dim {{ color: #8A8A92; }}
 QFrame#card {{ background: #141116; border: 1px solid #27222A; border-radius: 10px; }}
 QFrame#card QLabel, QFrame#card QCheckBox {{ background: transparent; }}
