@@ -2,7 +2,7 @@
 # The Paragon apps came in as packages (paragon-pr7os-apps, paragon-pr7os-python): every app imports, or the build
 # stops (a broken environment fails here, not at the user's first click).
 set -e
-for pkg in paragon-pr7os-look paragon-pr7os-apps paragon-pr7os-python paragon-pr7os-updates; do
+for pkg in paragon-pr7os-look paragon-pr7os-apps paragon-pr7os-python paragon-pr7os-updates paragon-pr7os-system; do
     dpkg-query -W -f '${Package} ${Version} ${db:Status-Status}\n' "$pkg" | grep -q " installed$" \
         || { echo "$pkg isn't installed"; exit 1; }
 done
@@ -10,3 +10,6 @@ for app in /opt/paragon/apps/paragon-pr7-*; do
     pkg=$(basename "$app" | sed 's/paragon-pr7-/pr7/')
     PYTHONPATH="$app" /opt/paragon/venv/bin/python -c "import $pkg" || { echo "$pkg doesn't import"; exit 1; }
 done
+# the system package's setup: the firewall marked on (it starts at boot), Flathub listed for Discover
+grep -q "^ENABLED=yes" /etc/ufw/ufw.conf || { echo "the firewall isn't marked on"; exit 1; }
+flatpak remotes --system | grep -q "^flathub" || { echo "Flathub isn't a Flatpak source"; exit 1; }

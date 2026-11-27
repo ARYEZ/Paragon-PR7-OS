@@ -1,0 +1,7 @@
+#!/bin/sh
+# Steam on PR7-OS comes from Flathub: its own 32-bit libraries and runtime, nothing added to Debian's system.
+# Installed: start it. Not yet: Discover opens on Steam's page (one INSTALL click).
+if flatpak info com.valvesoftware.Steam >/dev/null 2>&1; then
+    exec flatpak run com.valvesoftware.Steam "$@"
+fi
+exec xdg-open appstream://com.valvesoftware.Steam

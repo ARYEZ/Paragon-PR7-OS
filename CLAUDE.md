@@ -36,6 +36,13 @@ a live ISO with the Calamares installer. The owner writes Python; explain the wh
   Release assets: the packages, the manifest, `paragon-pr7os-updates.deb` (fixed name for the one-time command).
   Tests: tests/test_packages.py, tests/test_updater.py (a stand-in GitHub); CI `update-test` (debian:trixie: old
   updater installed with apt, updated by the helper).
+- **paragon-pr7os-system** (0.2.1): what a desktop needs beyond Plasma as Depends (avahi + libnss-mdns, cups +
+  print-manager, unattended-upgrades (`etc/apt/apt.conf.d/52paragon-auto-upgrades`), curl / wget / git / unzip / htop,
+  ufw + plasma-firewall, flatpak + Discover's backend, mesa-vulkan-drivers, gamemode) and `static/system/setup_system.py`
+  (postinst: the firewall once, marker /var/lib/paragon/firewall-configured; Flathub `--if-not-exists`); `pr7os-steam`
+  opens Discover on Steam (Flathub) or starts it. Depends names must exist in Debian 13 (the ISO build fails otherwise:
+  0.2.0's `kscreenlocker`). The look's `faces()` gives accounts with no picture / Debian's (byte-identical to a file in
+  desktop-base or pixmaps) `face.png`; never a chosen one. The helper's apt-get waits for the lock (DPkg::Lock::Timeout).
 - **The lock screen** is Plasma's shell package (org.kde.plasma.desktop/contents/lockscreen), not the global theme,
   and its QML unlocks the session: `pr7os/static/lockscreen.py` (run by hook 0200) only restyles it with anchored edits
   (ParagonClock instead of Breeze's Clock; the password field's / unlock key's backgrounds; UserDelegate's gradient

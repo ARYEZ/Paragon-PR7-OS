@@ -59,7 +59,8 @@ def test_the_wallpaper_and_the_boot_art_are_the_familys(built):
     root, _ = built
     for rel in ("usr/share/wallpapers/Paragon/contents/images_dark/3840x2160.png",
                 "usr/share/wallpapers/Paragon/contents/images/3840x2160.png",
-                "usr/share/grub/themes/paragon/background.png", "usr/share/sddm/themes/paragon/background.png"):
+                "usr/share/grub/themes/paragon/background.png", "usr/share/sddm/themes/paragon/background.png",
+                "usr/share/paragon/face.png"):
         img = QImage(str(root / rel))
         assert not img.isNull(), rel
         for y in range(0, img.height(), max(1, img.height() // 40)):

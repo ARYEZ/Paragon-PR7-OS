@@ -119,9 +119,9 @@ def test_the_helper_installs_the_release(env, tools):
     assert "PROGRESS 1 2 paragon-pr7os-updates_9.9.9_all.deb" in lines
     assert lines[-1] == f"DONE logout {VERSION}"                      # the look changed: log out to see it
     calls = tools["log"].read_text().splitlines()
-    assert calls[0] == "apt-get update -qq"
+    assert calls[0] == "apt-get -o DPkg::Lock::Timeout=600 update -qq"     # waits out Debian's daily security updates
     install = calls[1].split()
-    assert install[:4] == ["apt-get", "install", "-y", "--allow-downgrades"]
+    assert install[:6] == ["apt-get", "-o", "DPkg::Lock::Timeout=600", "install", "-y", "--allow-downgrades"]
     assert "Dpkg::Options::=--force-confold" in install                  # your changed config files stay yours
     assert [Path(a).name for a in install if a.endswith(".deb")] == [
         "paragon-pr7os-updates_9.9.9_all.deb", "paragon-pr7os-look_9.9.9_all.deb"]

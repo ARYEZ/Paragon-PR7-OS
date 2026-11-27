@@ -1,0 +1,5 @@
+// Paragon PR7-OS: Debian's security and stable fixes install by themselves once a day (unattended-upgrades, with
+// Debian's own list of what counts: no new versions, nothing from outside Debian). Remove this file to stop it.
+APT::Periodic::Update-Package-Lists "1";
+APT::Periodic::Unattended-Upgrade "1";
+APT::Periodic::AutocleanInterval "7";

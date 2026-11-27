@@ -43,10 +43,11 @@ def contents(deb: Path) -> list[str]:
             for line in out.splitlines()]
 
 
-def test_four_packages_and_a_manifest(debs):
+def test_five_packages_and_a_manifest(debs):
     out, manifest = debs
     names = {p["name"] for p in manifest["packages"]}
-    assert names == {"paragon-pr7os-look", "paragon-pr7os-apps", "paragon-pr7os-updates", "paragon-pr7os-python"}
+    assert names == {"paragon-pr7os-look", "paragon-pr7os-apps", "paragon-pr7os-updates", "paragon-pr7os-python",
+                     "paragon-pr7os-system"}
     assert manifest["version"] == __version__
     for p in manifest["packages"]:
         deb = out / p["file"]
@@ -70,9 +71,30 @@ def test_files_go_to_the_right_package(debs):
     assert "usr/share/polkit-1/actions/org.paragon.pr7os.update.policy" in updates
     assert "usr/lib/systemd/user/pr7os-update-check.timer" in updates
     assert "opt/paragon/venv/bin/python -> /usr/bin/python3" in files["paragon-pr7os-python"]
+    system = files["paragon-pr7os-system"]
+    assert {"usr/share/paragon/setup_system.py", "usr/bin/pr7os-steam", "usr/share/applications/pr7os-steam.desktop",
+            "etc/apt/apt.conf.d/52paragon-auto-upgrades"} <= set(system)
+    assert not any(f in look for f in system if f and not f.endswith("/"))   # each file in one package only
+    assert "usr/share/paragon/face.png" in look and "etc/skel/.face.icon" in look
     if any(f.startswith("opt/paragon/apps/") for f in files["paragon-pr7os-apps"]):
         app_files = files["paragon-pr7os-apps"]
         assert "usr/bin/pr7-e" in app_files and "etc/xdg/mimeapps.list" in app_files
+
+
+def test_the_system_package_brings_what_was_chosen(debs, tmp_path):
+    """Names on the network, printing, security updates, command-line basics, the firewall, Flatpak, Vulkan: all as
+    Debian packages it depends on, so the updater brings them to installed machines too."""
+    out, manifest = debs
+    deb = out / next(p["file"] for p in manifest["packages"] if p["name"] == "paragon-pr7os-system")
+    depends = {d.strip() for d in info(deb, "Depends").split(",")}
+    assert {"avahi-daemon", "libnss-mdns", "cups", "print-manager", "unattended-upgrades", "curl", "wget", "git",
+            "ufw", "plasma-firewall", "flatpak", "plasma-discover-backend-flatpak", "mesa-vulkan-drivers"} <= depends
+    assert "openssh-server" not in depends                        # an SSH server stays your own choice
+    subprocess.run(["dpkg-deb", "-e", str(deb), str(tmp_path / "ctl")], check=True)
+    assert "setup_system.py configure" in (tmp_path / "ctl/postinst").read_text()
+    assert (tmp_path / "ctl/conffiles").read_text().split() == ["/etc/apt/apt.conf.d/52paragon-auto-upgrades"]
+    listing = subprocess.run(["dpkg-deb", "-c", str(deb)], capture_output=True, text=True).stdout
+    assert any(l.startswith("-rwxr-xr-x") and l.endswith("usr/bin/pr7os-steam") for l in listing.splitlines())
 
 
 def test_install_scripts_and_triggers(debs, tmp_path):
@@ -101,6 +123,6 @@ def test_executables_are_executable(debs):
 
 def test_setup_look_and_the_updater_are_valid_python():
     static = Path(__file__).resolve().parents[1] / "pr7os/static"
-    for f in ("setup_look.py", "lockscreen.py", "updater/pr7os_update.py", "updater/pr7os-update",
+    for f in ("setup_look.py", "lockscreen.py", "system/setup_system.py", "updater/pr7os_update.py", "updater/pr7os-update",
               "updater/pr7os-update-helper", "updater/window.py"):
         compile((static / f).read_text(), f, "exec")

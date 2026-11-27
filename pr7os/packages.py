@@ -13,6 +13,9 @@ the updater reads from the release. Standard library and dpkg-deb only (it runs 
     python    the apps' environment; its version is a hash of what it holds, so an update only downloads it when the
               apps' requirements change
     updates   the updater: the daily check, the notification, the update window, the root helper, polkit, systemd
+    system    what a desktop needs beyond Plasma, as the Debian packages it depends on (names on the network, printing,
+              security updates, command-line basics, the firewall, Flatpak with Flathub, Vulkan for games), and
+              setup_system.py, run by its postinst (the firewall once, Flathub)
 """
 from __future__ import annotations
 
@@ -41,7 +44,13 @@ UPDATER_FILES = {   # the updater's files: path in the image -> source in pr7os/
     "usr/lib/systemd/user/pr7os-update-check.timer": "pr7os-update-check.timer",
     "usr/share/applications/pr7os-update.desktop": "pr7os-update.desktop",
 }
-EXECUTABLE = {"usr/bin/pr7os-update", "usr/libexec/paragon/pr7os-update-helper"}
+SYSTEM_FILES = {    # the system package's own files -> source in pr7os/static/system
+    "usr/share/paragon/setup_system.py": "setup_system.py",
+    "usr/bin/pr7os-steam": "pr7os-steam",
+    "usr/share/applications/pr7os-steam.desktop": "pr7os-steam.desktop",
+    "etc/apt/apt.conf.d/52paragon-auto-upgrades": "52paragon-auto-upgrades",
+}
+EXECUTABLE = {"usr/bin/pr7os-update", "usr/libexec/paragon/pr7os-update-helper", "usr/bin/pr7os-steam"}
 
 
 def is_app_file(rel: str) -> bool:
@@ -56,7 +65,7 @@ def split(root: Path) -> dict[str, list[str]]:
     out: dict[str, list[str]] = {"paragon-pr7os-look": [], "paragon-pr7os-apps": []}
     for f in sorted(p for p in root.rglob("*") if p.is_file() or p.is_symlink()):
         rel = f.relative_to(root).as_posix()
-        if rel.startswith("opt/paragon/venv/") or rel in UPDATER_FILES:
+        if rel.startswith("opt/paragon/venv/") or rel in UPDATER_FILES or rel in SYSTEM_FILES:
             continue
         out["paragon-pr7os-apps" if is_app_file(rel) else "paragon-pr7os-look"].append(rel)
     return out
@@ -100,6 +109,14 @@ case "$1" in
 esac
 """,
     },
+    "paragon-pr7os-system": {
+        "postinst": """#!/bin/sh
+set -e
+case "$1" in
+    configure) python3 /usr/share/paragon/setup_system.py configure || true ;;
+esac
+""",
+    },
     "paragon-pr7os-updates": {
         "postinst": """#!/bin/sh
 set -e
@@ -129,6 +146,13 @@ CONTROL = {
     "paragon-pr7os-python": ("amd64", "python3 (>= 3.13), python3 (<< 3.14)",
                              "The Paragon apps' Python environment",
                              "Qt (PySide6, PyQt6) and the other Python packages the Paragon apps use."),
+    "paragon-pr7os-system": ("all", "python3, avahi-daemon, libnss-mdns, cups, print-manager, unattended-upgrades, "
+                                    "curl, wget, git, unzip, htop, ufw, plasma-firewall, flatpak, "
+                                    "plasma-discover-backend-flatpak, mesa-vulkan-drivers, gamemode, xdg-utils",
+                             "Paragon PR7-OS system",
+                             "What PR7-OS adds to Debian's Plasma: names on the network (name.local), printing, Debian's\n"
+                             " security fixes by themselves, command-line basics, the firewall, Flatpak with Flathub\n"
+                             " in Discover, and Vulkan for games (Steam from Flathub)."),
     "paragon-pr7os-updates": ("all", "python3, pkexec, libnotify-bin, systemd",
                               "Paragon PR7-OS updates",
                               "Checks GitHub for new PR7-OS releases once a day, says so, and installs them."),
@@ -182,6 +206,8 @@ def build(root: Path, out: Path, version: str = __version__, venv: Path | None =
     debs = [build_deb(name, version, {rel: root / rel for rel in rels}, out) for name, rels in parts.items()]
     debs.append(build_deb("paragon-pr7os-updates", version,
                           {rel: STATIC / "updater" / src for rel, src in UPDATER_FILES.items()}, out))
+    debs.append(build_deb("paragon-pr7os-system", version,
+                          {rel: STATIC / "system" / src for rel, src in SYSTEM_FILES.items()}, out))
     if venv is not None:
         files = {}
         for f in sorted(p for p in venv.rglob("*") if p.is_file() or p.is_symlink()):

@@ -1,0 +1,87 @@
+#!/usr/bin/env python3
+"""What the paragon-pr7os-system package does once its dependencies are in place (its postinst).
+
+    python3 setup_system.py configure
+
+- The firewall (ufw), once: incoming connections blocked except SSH (port 22, used only if you install an SSH server)
+  and KDE Connect (1714-1764); ufw's own rules already let mDNS (avahi: name.local, network printers) through.
+  Switched on at once on a running system; in the ISO's build it's marked on and starts at boot. Done only the
+  first time (a marker in /var/lib/paragon): if you change or switch off the firewall later, updates leave it alone.
+- Flathub as a Flatpak source (so Discover offers its apps, Steam included), every time: `--if-not-exists` makes
+  that a no-op once it's there; without a network it's tried again on the next update.
+Standard library only (Debian's python3). PR7OS_ROOT, PR7OS_UFW and PR7OS_FLATPAK point the tests elsewhere.
+"""
+from __future__ import annotations
+
+import os
+import re
+import shutil
+import subprocess
+import sys
+from pathlib import Path
+
+FLATHUB = "https://dl.flathub.org/repo/flathub.flatpakrepo"
+RULES = [
+    ["default", "deny", "incoming"],
+    ["default", "allow", "outgoing"],
+    ["allow", "22/tcp", "comment", "SSH"],
+    ["allow", "1714:1764/tcp", "comment", "KDE Connect"],
+    ["allow", "1714:1764/udp", "comment", "KDE Connect"],
+]
+
+
+def root() -> Path:
+    return Path(os.environ.get("PR7OS_ROOT", "/"))
+
+
+def tool(env: str, name: str) -> str | None:
+    return os.environ.get(env) or shutil.which(name)
+
+
+def running_system() -> bool:
+    """Booted with systemd (an installed or live system), not the ISO's build chroot."""
+    return (root() / "run/systemd/system").is_dir()
+
+
+def firewall() -> str:
+    marker = root() / "var/lib/paragon/firewall-configured"
+    if marker.exists():
+        return "left as you set it"
+    ufw = tool("PR7OS_UFW", "ufw")
+    if not ufw:
+        return "ufw isn't installed"
+    for rule in RULES:
+        if subprocess.run([ufw, *rule], stdout=subprocess.DEVNULL).returncode:
+            return f"ufw {' '.join(rule)} failed; tried again on the next update"
+    conf = root() / "etc/ufw/ufw.conf"
+    if conf.exists():
+        text = conf.read_text(encoding="utf-8")
+        text = re.sub(r"^ENABLED=.*$", "ENABLED=yes", text, flags=re.M) if "ENABLED=" in text else text + "ENABLED=yes\n"
+        conf.write_text(text, encoding="utf-8")
+    if running_system():
+        subprocess.run([ufw, "--force", "enable"], stdout=subprocess.DEVNULL)
+    marker.parent.mkdir(parents=True, exist_ok=True)
+    marker.write_text("PR7-OS set up the firewall once; it's yours to change now.\n", encoding="utf-8")
+    return "on"
+
+
+def flathub() -> str:
+    flatpak = tool("PR7OS_FLATPAK", "flatpak")
+    if not flatpak:
+        return "flatpak isn't installed"
+    done = subprocess.run([flatpak, "remote-add", "--system", "--if-not-exists", "flathub", FLATHUB],
+                          stdout=subprocess.DEVNULL, stderr=subprocess.PIPE, text=True)
+    return "added" if done.returncode == 0 else f"not added yet ({done.stderr.strip()[:200]})"
+
+
+def main(argv: list[str]) -> int:
+    if not argv or argv[0] != "configure":
+        print(__doc__)
+        return 2
+    print(f"PR7-OS firewall: {firewall()}")
+    print(f"PR7-OS Flathub: {flathub()}")
+    return 0                                    # never fail the package: each step is retried on the next update
+
+
+if __name__ == "__main__":
+    raise SystemExit(main(sys.argv[1:]))

@@ -1,5 +1,25 @@
 # Changelog
 
+## 0.2.1
+
+What a desktop needs beyond Plasma, in a new package (paragon-pr7os-system) that the updater brings to installed
+machines too: open PR7-OS Update, or wait for the notification.
+
+- **Names on the network**: every PR7-OS machine answers as `<its name>.local` (avahi), so `ssh you@outpost.local`
+  works from Windows without looking up the address. The SSH server itself stays your choice
+  (`sudo apt install openssh-server`).
+- **Printing**: CUPS and Plasma's Printers page; network printers are found by themselves.
+- **Security fixes by themselves**: Debian's security and stable fixes install quietly once a day (unattended-upgrades,
+  Debian's own rules: no new versions). PR7-OS's own updates wait for it if it's busy.
+- **Command-line basics**: curl, wget, git, unzip, htop.
+- **Firewall on**: incoming connections blocked except SSH (port 22) and KDE Connect; names on the network and printers
+  still work. Set up once: change it in System Settings > Firewall and updates leave it as you set it.
+- **Flatpak with Flathub in Discover**: apps Debian doesn't carry, one click away.
+- **Games**: Vulkan drivers and GameMode; "Get Steam" in the menu installs Steam from Flathub (its own 32-bit libraries,
+  nothing added to Debian) and starts it afterwards. NVIDIA cards need NVIDIA's driver from Debian's non-free section.
+- **Paragon account picture**: the gradient 7 instead of Debian's swirl on the lock screen, for accounts that still had
+  Debian's (a picture you chose is never touched).
+
 ## 0.2.0
 
 **Updates come to you.** Once a day PR7-OS checks for a new release and says so; "PR7-OS Update" (in the menu, or

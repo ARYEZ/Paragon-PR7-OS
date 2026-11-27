@@ -1,0 +1,8 @@
+[Desktop Entry]
+Type=Application
+Name=Get Steam
+Comment=Install Steam from Flathub, or start it once it's there
+Exec=pr7os-steam
+Icon=applications-games
+Categories=Game;
+Keywords=steam;games;valve;

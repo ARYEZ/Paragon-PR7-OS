@@ -184,6 +184,22 @@ def mark_image(w: int, h: int, glow: bool = True, text_colour: str | None = None
     return img
 
 
+def face_image(size: int = 256) -> QImage:
+    """The account picture until you choose your own: onyx with a soft family glow and the gradient 7 (the login and
+    lock screens crop it to a circle)."""
+    from PySide6.QtGui import QRadialGradient
+    img, p = new_image(size, size)
+    p.fillRect(QRectF(0, 0, size, size), colour("#141116"))
+    glow = QRadialGradient(size * 0.5, size * 0.62, size * 0.62)
+    glow.setColorAt(0, colour("#DE0639", 0.30))
+    glow.setColorAt(1, colour("#DE0639", 0.0))
+    p.fillRect(QRectF(0, 0, size, size), glow)
+    seven = QRectF(size * 0.22, size * 0.28, size * 0.56, size * 0.44)
+    p.fillPath(seven_path(seven), theme.family_gradient(seven.left(), 0, seven.right(), 0))
+    p.end()
+    return img
+
+
 def text_image(s: str, px: int, hex_: str, w: int, h: int, spacing: float = 0, bold: bool = False) -> QImage:
     from PySide6.QtGui import QFont
     img, p = new_image(w, h)
@@ -495,7 +511,8 @@ def write(root: Path, rel: str, content: str | bytes | QImage) -> Path:
     path = root / rel
     path.parent.mkdir(parents=True, exist_ok=True)
     if isinstance(content, QImage):
-        if not content.save(str(path)):
+        fmt = None if path.suffix.lower() in (".png", ".jpg", ".jpeg") else "PNG"     # .face.icon is a PNG
+        if not content.save(str(path), fmt):
             raise OSError(f"couldn't write {path}")
     elif isinstance(content, bytes):
         path.write_bytes(content)
@@ -533,6 +550,10 @@ def build(root: Path) -> list[Path]:
     out.append(write(root, f"{share}/icons/hicolor/scalable/apps/pr7os-start.svg", start_icon_svg()))
     out.append(write(root, f"{share}/icons/hicolor/scalable/apps/pr7os.svg", start_icon_svg()))
     out.append(write(root, f"{share}/pixmaps/pr7os-mark.png", mark_image(1040, 200)))
+    # the account picture (setup_look.py gives it to accounts that still have Debian's; new accounts get it from skel)
+    face = face_image(256)
+    out.append(write(root, f"{share}/paragon/face.png", face))
+    out.append(write(root, "etc/skel/.face.icon", face))
     # system defaults: OBSIDIAN (what a new account starts with)
     for cfg, groups in plasma_settings("obsidian").items():
         body = dict(groups)

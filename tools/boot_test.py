@@ -221,6 +221,7 @@ def main(iso: str, out_dir: str) -> int:
     m = Machine(["-kernel", str(work / "vmlinuz"), "-initrd", str(work / "initrd.img"), "-append", append,
                  "-cdrom", iso], work, "login")
     login_ok = lock_shown = unlocked = packaged = False
+    firewall_on = flathub_listed = avahi_on = False
     try:
         while m.elapsed() < 240:
             img = m.shot()
@@ -254,8 +255,19 @@ def main(iso: str, out_dir: str) -> int:
         unlocked = difference(back, desktop) < 8
         pkgs = m.guest("/usr/bin/dpkg-query", ["-W", "-f", "${Package} ${Version}\n", "paragon-pr7os-*"])
         (out / "packages.txt").write_text(pkgs)
-        packaged = all(f"paragon-pr7os-{p} " in pkgs for p in ("look", "apps", "python", "updates"))
-        result.append(f"PR7-OS packages: {'all four' if packaged else 'MISSING'}")
+        packaged = all(f"paragon-pr7os-{p} " in pkgs for p in ("look", "apps", "python", "updates", "system"))
+        result.append(f"PR7-OS packages: {'all five' if packaged else 'MISSING'}")
+        system = m.guest("/bin/sh", ["-c",
+            "ufw status verbose; echo ---; flatpak remotes --system; echo ---; systemctl is-active avahi-daemon cups; "
+            "echo ---; for u in /home/*; do ls -la \"$u\"/.face* 2>&1; done; ls -la /var/lib/AccountsService/icons "
+            "2>&1; cat /var/lib/AccountsService/users/* 2>&1"])
+        (out / "system.txt").write_text(system)
+        firewall_on = "Status: active" in system and "22/tcp" in system
+        flathub_listed = "\nflathub" in system or system.startswith("flathub")
+        parts = system.split("---")
+        avahi_on = len(parts) > 2 and parts[2].split()[:1] == ["active"]
+        result.append(f"firewall: {'on' if firewall_on else 'OFF'}; Flathub: {'listed' if flathub_listed else 'MISSING'}; "
+                      f"avahi: {'running' if avahi_on else 'NOT RUNNING'}")
         (out / "journal.txt").write_text(m.guest("/usr/bin/journalctl", ["-b", "--no-pager", "-o", "short-monotonic"], 120))
         (out / "lockscreen-files.txt").write_text(m.guest("/bin/sh", ["-c",
             "ls -la /usr/share/plasma/shells/org.kde.plasma.desktop/contents/lockscreen/; "
@@ -270,7 +282,8 @@ def main(iso: str, out_dir: str) -> int:
     timeline(frames, out / "timeline.png")
     (out / "result.txt").write_text("\n".join(result) + "\n")
     print("\n".join(result))
-    return 0 if desktop_ok and login_ok and lock_shown and unlocked and packaged else 1
+    return 0 if (desktop_ok and login_ok and lock_shown and unlocked and packaged and firewall_on
+                  and flathub_listed and avahi_on) else 1
 
 
 if __name__ == "__main__":

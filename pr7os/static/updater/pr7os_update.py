@@ -113,8 +113,9 @@ def install(files: list[Path], output=print) -> int:
     """apt-get installs the packages together (Debian's dependencies from Debian); changed config files are kept."""
     apt = os.environ.get("PR7OS_APT", "apt-get")
     env = dict(os.environ, DEBIAN_FRONTEND="noninteractive")
-    subprocess.run([apt, "update", "-qq"], env=env)                 # best effort: fresh lists for new dependencies
-    cmd = [apt, "install", "-y", "--allow-downgrades", "-o", "Dpkg::Options::=--force-confdef",
+    wait = ["-o", "DPkg::Lock::Timeout=600"]     # Debian's daily security updates may hold apt's lock: wait for them
+    subprocess.run([apt, *wait, "update", "-qq"], env=env)          # best effort: fresh lists for new dependencies
+    cmd = [apt, *wait, "install", "-y", "--allow-downgrades", "-o", "Dpkg::Options::=--force-confdef",
            "-o", "Dpkg::Options::=--force-confold"] + [str(f.resolve()) for f in files]
     proc = subprocess.Popen(cmd, env=env, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
     for line in proc.stdout:

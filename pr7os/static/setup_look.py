@@ -11,7 +11,10 @@ Every step can run any number of times (each update runs it again):
 - the boot menu's fonts (grub-fonts.py), and on an installed system update-grub;
 - the boot splash (Plymouth) and the initramfs that shows it (installed systems only: the ISO's build makes its own);
 - the lock screen's look (lockscreen.py; --strict stops on a Plasma it doesn't recognise, as the ISO's build wants);
-- the system's name: Debian's os-release diverted, NAME / PRETTY_NAME / LOGO Paragon's, ID still "debian".
+- the system's name: Debian's os-release diverted, NAME / PRETTY_NAME / LOGO Paragon's, ID still "debian";
+- the account picture: accounts with no picture, or still Debian's (byte for byte a file Debian ships), get Paragon's
+  (AccountsService's icon, which the login and lock screens read, and ~/.face.icon); a picture you chose is never
+  touched. New accounts get it from /etc/skel.
 Standard library only: it runs with Debian's python3, before or without the apps' environment.
 """
 from __future__ import annotations
@@ -87,6 +90,108 @@ def os_release() -> None:
     OS_RELEASE.write_text("".join(f"{k}={v}\n" for k, v in keep.items()), encoding="utf-8")
 
 
+# --------------------------------------------------------------------------- the account picture
+FACE = "usr/share/paragon/face.png"
+DEBIAN_PICTURES = ("usr/share/desktop-base", "usr/share/pixmaps", "usr/share/images/desktop-base")
+
+
+def accounts(root: Path) -> list[tuple[str, int, int, Path]]:
+    """People's accounts (uid 1000-59999 with a home folder): name, uid, gid, home."""
+    out = []
+    try:
+        lines = (root / "etc/passwd").read_text(encoding="utf-8").splitlines()
+    except OSError:
+        return out
+    for line in lines:
+        f = line.split(":")
+        if len(f) >= 7 and f[2].isdigit() and 1000 <= int(f[2]) < 60000:
+            home = root / f[5].lstrip("/")
+            if home.is_dir():
+                out.append((f[0], int(f[2]), int(f[3]), home))
+    return out
+
+
+def debian_pictures(root: Path) -> set[bytes]:
+    found = set()
+    for d in DEBIAN_PICTURES:
+        for f in (root / d).rglob("*") if (root / d).is_dir() else []:
+            if f.is_file() and f.suffix.lower() in (".png", ".jpg", ".jpeg", ".svg") and f.stat().st_size < 4_000_000:
+                found.add(f.read_bytes())
+    return found
+
+
+def replaceable(path: Path, ours: bytes, debian: set[bytes]) -> bool:
+    """No picture, a broken link, ours (refreshed), or byte for byte one of Debian's: not something you chose."""
+    if not path.exists():
+        return True
+    try:
+        data = path.read_bytes()
+    except OSError:
+        return False
+    return data == ours or data in debian
+
+
+def set_icon_line(user_file: Path, icon: str | None) -> None:
+    """AccountsService's [User] Icon= line set (or removed), the rest of the file kept."""
+    lines = user_file.read_text(encoding="utf-8").splitlines() if user_file.exists() else ["[User]"]
+    lines = [l for l in lines if not l.startswith("Icon=")]
+    if icon is not None:
+        if "[User]" not in lines:
+            lines.insert(0, "[User]")
+        lines.insert(lines.index("[User]") + 1, f"Icon={icon}")
+    user_file.parent.mkdir(parents=True, exist_ok=True)
+    user_file.write_text("\n".join(lines) + "\n", encoding="utf-8")
+
+
+def faces(root: Path = Path("/")) -> list[str]:
+    face = root / FACE
+    if not face.exists():
+        return []
+    ours, debian = face.read_bytes(), debian_pictures(root)
+    given = []
+    for name, uid, gid, home in accounts(root):
+        acc = root / "var/lib/AccountsService"
+        icon = acc / "icons" / name
+        user_file = acc / "users" / name
+        listed = ""
+        if user_file.exists():
+            m = re.search(r"^Icon=(.*)$", user_file.read_text(encoding="utf-8"), re.M)
+            listed = m.group(1).strip() if m else ""
+        listed_path = root / listed.lstrip("/") if listed else icon
+        if not (replaceable(icon, ours, debian) and replaceable(listed_path, ours, debian)):
+            continue                                     # a picture of your own
+        icon.parent.mkdir(parents=True, exist_ok=True)
+        shutil.copyfile(face, icon)
+        set_icon_line(user_file, "/var/lib/AccountsService/icons/" + name)
+        dot = home / ".face.icon"
+        if dot.is_symlink() or replaceable(dot, ours, debian):
+            dot.unlink(missing_ok=True)
+            dot.symlink_to("/" + FACE)
+            try:
+                os.lchown(dot, uid, gid)
+            except OSError:
+                pass
+        given.append(name)
+    if given:
+        run("systemctl", "try-restart", "accounts-daemon.service")      # it caches pictures
+    return given
+
+
+def unfaces(root: Path = Path("/")) -> None:
+    face = root / FACE
+    if not face.exists():
+        return
+    ours = face.read_bytes()
+    for name, _uid, _gid, home in accounts(root):
+        icon = root / "var/lib/AccountsService/icons" / name
+        if icon.exists() and icon.read_bytes() == ours:
+            icon.unlink()
+            set_icon_line(root / "var/lib/AccountsService/users" / name, None)
+        dot = home / ".face.icon"
+        if dot.is_symlink() and os.readlink(dot) == "/" + FACE:
+            dot.unlink()
+
+
 def configure(strict: bool) -> None:
     plasma_style()
     run("fc-cache", "-f")
@@ -98,6 +203,7 @@ def configure(strict: bool) -> None:
     lock = [sys.executable, str(SHARE / "lockscreen.py")] + (["--strict"] if strict else [])
     subprocess.run(lock, check=True)
     os_release()
+    faces()
     if shutil.which("plymouth-set-default-theme"):
         run("plymouth-set-default-theme", "paragon")
     if installed_system():
@@ -107,6 +213,7 @@ def configure(strict: bool) -> None:
 
 def remove() -> None:
     subprocess.run([sys.executable, str(SHARE / "lockscreen.py"), "--restore"], check=False)
+    unfaces()
     if STYLE.exists():
         shutil.rmtree(STYLE)
     for pf2 in GRUB_THEME.glob("*.pf2"):
