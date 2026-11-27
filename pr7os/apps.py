@@ -14,8 +14,7 @@ Layout in the image:
                                                   menu entries found here: Spectacle's way to own Print)
     /etc/xdg/autostart/paragon-pr7-<x>.desktop    apps that start at sign-in (PR7-Q, as Greenshot does)
 
-Only apps that work on Linux are here. Left out (Windows-only for now): PR7-AR (Autoruns), PR7-UN (uninstaller),
-PR7-U (Windows installers).
+Every family app is here but PR7-U (it installs Windows setups; PR7-OS Update does that job here).
 """
 from __future__ import annotations
 
@@ -99,6 +98,8 @@ APPS = [
         actions=(("show", "Open the launcher", "", "Alt+Space"),), autostart="--tray"),
     App("CB", "Clipboard", "Clipboard History", "Utility;",
         actions=(("show", "Show clips", "", "Ctrl+`"),), autostart="--tray"),
+    App("AR", "Startup", "Startup Manager", "System;Settings;"),
+    App("UN", "Uninstaller", "Uninstaller", "System;Settings;PackageManager;"),
 ]
 
 # Plasma's own defaults that PR7-OS changes for its apps (/etc/xdg/kglobalshortcutsrc: what a new account starts with):
@@ -120,8 +121,7 @@ RecordScreen=none
 RecordWindow=none
 """
 
-LEFT_OUT = {"AR": "Autoruns: Windows' startup places", "UN": "uninstaller: Windows programs",
-            "U": "family installer: Windows setups"}
+LEFT_OUT = {"U": "family installer: Windows setups (PR7-OS Update does its job here)"}
 
 
 # The apps' text in Bebas Neue on PR7-OS (the owner's choice) without touching their code: their own Inter isn't
