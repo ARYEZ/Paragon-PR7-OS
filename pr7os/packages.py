@@ -61,7 +61,7 @@ SYSTEM_FILES = {    # the system package's own files -> source in pr7os/static/s
 }
 EXECUTABLE = {"usr/bin/pr7os-update", "usr/libexec/paragon/pr7os-update-helper", "usr/bin/pr7os-steam",
               "usr/bin/pr7os-welcome", "usr/libexec/paragon/pr7os-ssh-helper",
-              "usr/libexec/paragon/pr7os-drivers-helper"}
+              "usr/libexec/paragon/pr7os-drivers-helper", "etc/initramfs-tools/hooks/paragon-plymouth-fonts"}
 
 
 def is_app_file(rel: str) -> bool:
@@ -147,7 +147,7 @@ esac
 }
 
 CONTROL = {
-    "paragon-pr7os-look": ("all", "python3, plasma-workspace, sddm, plymouth, grub-common, dpkg",
+    "paragon-pr7os-look": ("all", "python3, plasma-workspace, sddm, plymouth, plymouth-label, grub-common, dpkg",
                            "Paragon PR7-OS's look",
                            "The family look for Debian's KDE Plasma: colour schemes, window decoration, wallpaper,\n"
                            " global themes, login screen, lock screen, boot splash and boot menu."),

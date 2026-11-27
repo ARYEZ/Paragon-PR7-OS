@@ -618,6 +618,9 @@ def build(root: Path) -> list[Path]:
     out.append(write(root, f"{cal}/branding.desc",
                      (STATIC / "calamares/branding.desc").read_text(encoding="utf-8").replace("@VERSION@", __version__)))
     out.append(write(root, f"{cal}/show.qml", (STATIC / "calamares/show.qml").read_text(encoding="utf-8")))
+    # the installer's disk settings (an encrypted disk by default): applied to Debian's partition.conf by hook 0300
+    out.append(write(root, "usr/share/paragon/calamares_partition.py",
+                     (STATIC / "calamares/partition_settings.py").read_text(encoding="utf-8")))
     icon, ip = new_image(256, 256)
     ip.fillPath(seven_path(QRectF(40, 52, 176, 152)), theme.family_gradient(40, 0, 216, 0)); ip.end()
     out.append(write(root, f"{cal}/icon.png", icon))
@@ -628,6 +631,11 @@ def build(root: Path) -> list[Path]:
     # folder keeps its first name so updates replace files in place. GRUB's fonts are made from these by the hook
     for ttf in sorted((HERE / "fonts").glob("*.ttf")):
         out.append(write(root, f"{share}/fonts/truetype/paragon-inter/{ttf.name}", ttf.read_bytes()))
+    # the boot splash's words come from the initramfs: its font and fontconfig are copied in (an encrypted disk's question)
+    hook = write(root, "etc/initramfs-tools/hooks/paragon-plymouth-fonts",
+                 (STATIC / "initramfs/paragon-plymouth-fonts").read_text(encoding="utf-8"))
+    hook.chmod(0o755)
+    out.append(hook)
     for lic in ("OFL-LICENSE.txt", "BebasNeue-OFL.txt"):
         if (HERE / "fonts" / lic).exists():
             out.append(write(root, f"{share}/fonts/truetype/paragon-inter/{lic}", (HERE / "fonts" / lic).read_bytes()))

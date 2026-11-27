@@ -220,3 +220,44 @@ def test_the_card(welcome):
     gpu = json.loads(state.read_text())["gpus"]
     assert "in use" in mod.drivers_view({"gpus": gpu, "in_use": True})[0]
     assert "restart" in mod.drivers_view({"gpus": gpu, "installed": True})[0]
+
+
+# ---------------------------------------------------------------- the installer's encrypted disk (0.5.2)
+CAL = Path(__file__).resolve().parent.parent / "pr7os" / "static" / "calamares" / "partition_settings.py"
+
+
+def test_installer_encrypts_by_default():
+    loader = importlib.machinery.SourceFileLoader("partition_settings", str(CAL))
+    spec = importlib.util.spec_from_loader("partition_settings", loader)
+    mod = importlib.util.module_from_spec(spec)
+    loader.exec_module(mod)
+    debian = ("efi:\n    mountPoint: \"/boot/efi\"\n\nuserSwapChoices:\n    - none\n    - file\n\n"
+              "luksGeneration: luks1\n#preCheckEncryption: false\n"
+              "partitionLayout:\n    - name: \"rootfs\"\n      mountPoint: \"/\"\n      size: 100%\n\n"
+              "# next\ndefaultFileSystemType: \"ext4\"\n")
+    new = mod.patch(debian)
+    import yaml                                     # PyYAML: what Calamares' own YAML reader sees
+    conf = yaml.safe_load(new)
+    assert conf["preCheckEncryption"] is True and conf["luksGeneration"] == "luks2"
+    assert conf["enableLuksAutomatedPartitioning"] is True
+    assert conf["partitionLayout"] == [
+        {"name": "boot", "filesystem": "ext4", "noEncrypt": True, "mountPoint": "/boot", "size": "1G"},
+        {"name": "root", "filesystem": "unknown", "mountPoint": "/", "size": "100%"}]
+    assert conf["efi"] == {"mountPoint": "/boot/efi"} and conf["userSwapChoices"] == ["none", "file"]
+    assert conf["defaultFileSystemType"] == "ext4"                     # Debian's other settings stay
+    assert mod.patch(new) == new                                       # running it twice changes nothing
+
+
+def test_the_splash_asks_from_the_initramfs():
+    """Plymouth's words need its text plugin and the font inside the initramfs; the ISO puts cryptsetup there."""
+    root = Path(__file__).resolve().parent.parent
+    hook = (root / "pr7os/static/initramfs/paragon-plymouth-fonts").read_text()
+    assert "copy_file font /usr/share/fonts/truetype/paragon-inter/BebasNeue-Regular.ttf" in hook.replace('"$FONT"',
+           "/usr/share/fonts/truetype/paragon-inter/BebasNeue-Regular.ttf")
+    lst = (root / "live/config/package-lists/paragon.list.chroot").read_text().split()
+    assert {"plymouth-label", "cryptsetup", "cryptsetup-initramfs"} <= set(lst)
+    from pr7os import packages
+    assert "plymouth-label" in packages.CONTROL["paragon-pr7os-look"][1]
+    assert "etc/initramfs-tools/hooks/paragon-plymouth-fonts" in packages.EXECUTABLE
+    script = (root / "pr7os/static/plymouth/paragon.script").read_text()
+    assert "SetDisplayPasswordFunction" in script and "Bebas Neue" in script

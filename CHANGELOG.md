@@ -1,9 +1,22 @@
 # Changelog
 
+## 0.5.2
+
+- **An encrypted disk by default** (the installer, from the next ISO): "Encrypt system" is ticked from the start, with
+  LUKS2 (Argon2id: far harder to guess than LUKS1's), a small /boot that isn't encrypted and the system in one
+  encrypted partition. The password is asked once, by the boot splash, in the family look; nothing on the plain /boot
+  can unlock the disk (Calamares writes no key file there). The ISO now carries cryptsetup-initramfs, which unlocks it.
+- **The splash can ask**: its words (an encrypted disk's question, the dots as you type, boot messages) need Plymouth's
+  text plugin and the font inside the initramfs: paragon-pr7os-look now depends on plymouth-label and copies Bebas
+  Neue and fontconfig's settings in. Until now the question would have been invisible.
+- The ISO's boot test asks that question from the initramfs, as cryptsetup does, types into it, and checks the dots
+  showed and the answer arrived.
+- 0.5.1's notes corrected: the ISO already has the common firmware; DRIVERS adds the rest.
+
 ## 0.5.1
 
 - **DRIVERS in Welcome**: firmware for any PC (Wi-Fi, Bluetooth, sound, graphics, and the processor's microcode with
-  its security fixes; the ISO carries none), and on a PC with an NVIDIA card the NVIDIA driver: the package Debian's
+  its security fixes; the ISO has the common ones, this adds Atheros, Broadcom and MediaTek Wi-Fi, Bluetooth and sound), and on a PC with an NVIDIA card the NVIDIA driver: the package Debian's
   own nvidia-detect names for that card (a card Debian 13 has no driver for is said plainly, nothing is installed),
   built for your kernel, with modesetting and video memory kept over sleep (Plasma on Wayland needs both). With Secure
   Boot on, the driver's signing key is queued and Welcome shows a one-time password: at the next start, a blue screen

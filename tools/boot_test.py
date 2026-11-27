@@ -140,6 +140,12 @@ def brightness(img: Image.Image) -> float:
     return sum(ImageStat.Stat(img.convert("L")).mean)
 
 
+def orange(img: Image.Image) -> int:
+    """Pixels in the splash's orange (the password dots), counted on a quarter-size copy."""
+    small = img.resize((img.width // 2, img.height // 2))
+    return sum(1 for r, g, b in small.getdata() if r > 200 and 70 < g < 170 and b < 90)
+
+
 def difference(a: Image.Image, b: Image.Image) -> float:
     """How different two screens are: the mean of every pixel's difference (0 = the same picture)."""
     from PIL import ImageChops
@@ -213,6 +219,26 @@ def main(iso: str, out_dir: str) -> int:
     menu_since = None
     last = None
     try:
+        # an encrypted disk's question, as cryptsetup asks it (plymouth ask-for-password, from the initramfs: its
+        # font and text plugin must be in there): the ISO's paragon-asktest asks once and marks the serial log
+        serial = work / "login-serial.log"
+        while m.elapsed() < 150 and not asked:
+            asked = serial.exists() and "PARAGON-ASKTEST-ASKING" in serial.read_text(errors="replace")
+            time.sleep(2)
+        if asked:
+            time.sleep(4)                                  # the question drawn
+            empty = m.shot()
+            frames.append((m.elapsed(), "UNLOCK", empty))
+            empty.save(out / "unlock_question.png")
+            m.keys("pr7os")
+            time.sleep(2)
+            typed = m.shot()
+            frames.append((m.elapsed(), "UNLOCK", typed))
+            typed.save(out / "unlock_typed.png")
+            dots_shown = orange(typed) > orange(empty) + 40      # five dots in the family orange
+            m.key("ret")
+        result.append(f"unlock question: {'asked' if asked else 'NOT ASKED'}; dots: "
+                      f"{'shown' if dots_shown else 'NOT SHOWN'}")
         while m.elapsed() < 240:
             img = m.shot()
             t = m.elapsed()
@@ -244,10 +270,11 @@ def main(iso: str, out_dir: str) -> int:
         subprocess.run(["xorriso", "-osirrox", "on", "-indev", iso, "-extract", f"/live/{f}", str(work / f)],
                        check=True, capture_output=True)
     append = ("boot=live components quiet splash loglevel=3 username=paragon user-fullname=Paragon hostname=pr7os locales=en_US.UTF-8 "
-              "keyboard-layouts=us live-config.noautologin console=ttyS0,115200 console=tty0")
+              "keyboard-layouts=us live-config.noautologin console=ttyS0,115200 console=tty0 paragon.asktest")
     m = Machine(["-kernel", str(work / "vmlinuz"), "-initrd", str(work / "initrd.img"), "-append", append,
                  "-cdrom", iso], work, "login")
     login_ok = lock_shown = unlocked = packaged = False
+    asked = dots_shown = passed_on = False
     firewall_on = flathub_listed = avahi_on = False
     print_ok = apps_ok = launcher_ok = is_running = False
     try:
@@ -281,6 +308,9 @@ def main(iso: str, out_dir: str) -> int:
         back.save(out / "unlocked.png")
         lock_shown = difference(locked, desktop) > 12
         unlocked = difference(back, desktop) < 8
+        answer = m.guest("/bin/cat", ["/run/pr7os-asktest"]).strip()
+        passed_on = answer == "pr7os"
+        result.append(f"unlock answer: {'passed on' if passed_on else 'NOT PASSED ON (' + answer[:60] + ')'}")
         pkgs = m.guest("/usr/bin/dpkg-query", ["-W", "-f", "${Package} ${Version}\n", "paragon-pr7os-*"])
         (out / "packages.txt").write_text(pkgs)
         packaged = all(f"paragon-pr7os-{p} " in pkgs for p in ("look", "apps", "python", "updates", "system"))
@@ -372,7 +402,7 @@ def main(iso: str, out_dir: str) -> int:
     timeline(frames, out / "timeline.png")
     (out / "result.txt").write_text("\n".join(result) + "\n")
     print("\n".join(result))
-    return 0 if (desktop_ok and login_ok and lock_shown and unlocked and packaged and firewall_on
+    return 0 if (asked and dots_shown and passed_on and desktop_ok and login_ok and lock_shown and unlocked and packaged and firewall_on
                   and flathub_listed and avahi_on and print_ok and apps_ok and launcher_ok and is_running) else 1
 
 

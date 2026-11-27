@@ -61,6 +61,13 @@ a live ISO with the Calamares installer. The owner writes Python; explain the wh
   nvidia-suspend services, `dkms status` checked, Secure Boot: DKMS's /var/lib/dkms/mok.pub queued with `mokutil
   --import --hash-file` and an 8-digit password printed once as `MOK` (the card shows it; never logged). PR7OS_ROOT /
   PR7OS_SIMULATE for tests and CI's install_test (an lspci stand-in, apt-get -s). tests/test_drivers.py.
+- **Encrypted installs** (0.5.2): `static/calamares/partition_settings.py` (hook 0300, on Debian's partition.conf; build
+  stops if it didn't take): preCheckEncryption, luks2, partitionLayout /boot ext4 noEncrypt 1G + / "unknown" 100%
+  (Calamares then skips luksbootkeyfile and writes crypttab "none": the initramfs asks via Plymouth). The ISO has
+  cryptsetup-initramfs; the look Depends on plymouth-label and ships `etc/initramfs-tools/hooks/paragon-plymouth-fonts`
+  (Bebas Neue + fonts.conf into the initramfs: Plymouth's Image.Text draws nothing without them). Boot test: hook 0300's
+  init-premount `paragon-asktest` (only with paragon.asktest) asks with plymouth ask-for-password, marks ttyS0; the
+  test screenshots it, types, checks the orange dots and /run/pr7os-asktest.
 - **The lock screen** is Plasma's shell package (org.kde.plasma.desktop/contents/lockscreen), not the global theme,
   and its QML unlocks the session: `pr7os/static/lockscreen.py` (run by hook 0200) only restyles it with anchored edits
   (ParagonClock instead of Breeze's Clock; the password field's / unlock key's backgrounds; UserDelegate's gradient

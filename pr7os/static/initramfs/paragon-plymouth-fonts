@@ -1,0 +1,15 @@
+#!/bin/sh
+# Paragon PR7-OS: the boot splash's words. Plymouth draws text (an encrypted disk's question, its dots, boot messages)
+# with its label plugin (plymouth-label) and fontconfig; neither looks outside the initramfs, so the splash's font,
+# Bebas Neue, and fontconfig's settings are copied in. Without them the question and the dots don't show.
+PREREQ="plymouth"
+prereqs() { echo "$PREREQ"; }
+case "$1" in
+    prereqs) prereqs; exit 0 ;;
+esac
+. /usr/share/initramfs-tools/hook-functions
+FONT=/usr/share/fonts/truetype/paragon-inter/BebasNeue-Regular.ttf
+[ -f "$FONT" ] || exit 0
+copy_file font "$FONT"
+[ -f /etc/fonts/fonts.conf ] && copy_file config /etc/fonts/fonts.conf
+exit 0

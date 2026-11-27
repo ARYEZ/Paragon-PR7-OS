@@ -18,6 +18,7 @@ firefox-esr
 
 # boot: the splash, and what the installer puts on the disk (UEFI with Secure Boot, and BIOS)
 plymouth
+plymouth-label
 grub-common
 grub-efi-amd64
 grub-efi-amd64-signed
@@ -35,6 +36,9 @@ firmware-amd-graphics
 # the installer
 calamares
 calamares-settings-debian
+# an encrypted disk (the installer's Encrypt system): unlocked by the initramfs, asked through the splash
+cryptsetup
+cryptsetup-initramfs
 
 # what the Paragon apps need: Python, Qt's system libraries, 7-Zip (PR7-Z), HandBrakeCLI (PR7-HB), restic (PR7-BK)
 python3
