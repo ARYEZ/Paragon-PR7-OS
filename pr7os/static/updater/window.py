@@ -54,6 +54,9 @@ class Window(QWidget):
     def __init__(self, sync: bool = False):
         super().__init__()
         self.setWindowTitle("PR7-OS Update")
+        # Qt deletes the window when it closes, at a safe point in its event loop. Left to Python's garbage collector
+        # (the window is in reference cycles with its slots), it was deleted at a random moment: a crash at exit.
+        self.setAttribute(Qt.WidgetAttribute.WA_DeleteOnClose)
         self.resize(640, 520)
         self.setStyleSheet(STYLE)
         self.sync = sync
@@ -83,7 +86,7 @@ class Window(QWidget):
         self.details.hide()
         keys = QHBoxLayout()
         self.more = QPushButton("DETAILS")
-        self.more.clicked.connect(lambda: self.details.setVisible(not self.details.isVisible()))
+        self.more.clicked.connect(self.toggle_details)
         self.later = QPushButton("LATER")
         self.later.clicked.connect(self.close)
         self.update_key = QPushButton("UPDATE")
@@ -103,6 +106,9 @@ class Window(QWidget):
         self.proc: QProcess | None = None
         self._buffer = ""
         self.look()
+
+    def toggle_details(self):
+        self.details.setVisible(not self.details.isVisible())
 
     # ---------------------------------------------------------------- what's there
     def look(self):
