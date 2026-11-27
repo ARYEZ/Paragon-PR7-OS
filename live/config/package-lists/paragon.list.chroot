@@ -44,6 +44,7 @@ libegl1
 libgl1
 libxkbcommon-x11-0
 libfontconfig1
+libpulse0
 7zip
 handbrake-cli
 restic

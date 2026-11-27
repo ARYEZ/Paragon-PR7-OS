@@ -24,7 +24,7 @@ def test_package_list():
              if l.strip() and not l.startswith("#")]
     assert len(names) == len(set(names))
     for must in ("kde-plasma-desktop", "sddm", "plymouth", "calamares", "python3-venv", "7zip", "handbrake-cli",
-                 "restic", "grub-efi-amd64", "shim-signed", "libxcb-cursor0"):
+                 "restic", "grub-efi-amd64", "shim-signed", "libxcb-cursor0", "libpulse0"):
         assert must in names, must
 
 
