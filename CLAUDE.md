@@ -55,6 +55,12 @@ a live ISO with the Calamares installer. The owner writes Python; explain the wh
   manifest, never 0.0.x; no re-run); the window's GO BACK skips the newer version. Every run first takes a Timeshift
   snapshot (`snapshot`: config written once, system only, PR7-OS's three newest kept, skipped below 5 GB or without
   Timeshift: never fatal); PR7OS_TIMESHIFT / _CONFIG / PR7OS_SNAPSHOT_ROOT in tests. CI's update-test also goes back.
+- **Welcome's DRIVERS** (0.5.1): `static/welcome/pr7os-drivers-helper` (pkexec, words `state` / `install` only;
+  polkit `org.paragon.pr7os.drivers`): Debian's areas on Debian's own sources (one-line and deb822), firmware + microcode,
+  NVIDIA = `nvidia-detect <id>` decides the package, headers, /etc/modprobe.d/paragon-nvidia.conf (both module names),
+  nvidia-suspend services, `dkms status` checked, Secure Boot: DKMS's /var/lib/dkms/mok.pub queued with `mokutil
+  --import --hash-file` and an 8-digit password printed once as `MOK` (the card shows it; never logged). PR7OS_ROOT /
+  PR7OS_SIMULATE for tests and CI's install_test (an lspci stand-in, apt-get -s). tests/test_drivers.py.
 - **The lock screen** is Plasma's shell package (org.kde.plasma.desktop/contents/lockscreen), not the global theme,
   and its QML unlocks the session: `pr7os/static/lockscreen.py` (run by hook 0200) only restyles it with anchored edits
   (ParagonClock instead of Breeze's Clock; the password field's / unlock key's backgrounds; UserDelegate's gradient

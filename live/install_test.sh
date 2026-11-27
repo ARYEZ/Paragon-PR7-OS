@@ -31,3 +31,20 @@ for app in /opt/paragon/apps/paragon-pr7-*; do
     PYTHONPATH="$app" /opt/paragon/venv/bin/python -c "import $pkg" || fail "$pkg doesn't import"
 done
 echo "every app imports"
+# Welcome's DRIVERS, for real in Debian 13 except the card (this container has none: an lspci stand-in reports an RTX
+# 4070) and the big installs (apt-get -s: every package name and dependency resolved, nothing downloaded): Debian's
+# areas turned on in its own sources file, the real nvidia-detect asked about the card, firmware and driver resolved.
+mkdir -p /tmp/fakebin
+cat > /tmp/fakebin/lspci <<'PCI'
+#!/bin/sh
+printf '01:00.0 VGA compatible controller [0300]: NVIDIA Corporation AD104 [GeForce RTX 4070] [10de:2786] (rev a1)\n\tKernel driver in use: nouveau\n'
+PCI
+chmod +x /tmp/fakebin/lspci
+PATH="/tmp/fakebin:$PATH" PR7OS_SIMULATE=1 /usr/libexec/paragon/pr7os-drivers-helper install > /tmp/drivers.log 2>&1 \
+    || { tail -n 60 /tmp/drivers.log; fail "the drivers helper stopped"; }
+grep -E '^(STEP|DONE|ERROR)' /tmp/drivers.log
+grep -q 'non-free-firmware' /etc/apt/sources.list.d/debian.sources || fail "Debian's non-free areas weren't turned on"
+tail -n 1 /tmp/drivers.log | grep -qx 'DONE nvidia-driver (simulated)' || fail "nvidia-driver wasn't the driver chosen"
+grep -q '^Inst firmware-iwlwifi' /tmp/drivers.log || fail "the Wi-Fi firmware wasn't going to be installed"
+grep -q '^Inst nvidia-kernel-dkms' /tmp/drivers.log || fail "the driver's kernel module wasn't going to be built"
+echo "drivers helper: firmware and nvidia-driver resolve in Debian 13"

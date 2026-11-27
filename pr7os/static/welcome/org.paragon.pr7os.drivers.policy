@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE policyconfig PUBLIC "-//freedesktop//DTD PolicyKit Policy Configuration 1.0//EN"
+ "http://www.freedesktop.org/standards/PolicyKit/1/policyconfig.dtd">
+<policyconfig>
+  <vendor>Paragon PR7-OS</vendor>
+  <vendor_url>https://github.com/ARYEZ/Paragon-PR7-OS</vendor_url>
+  <action id="org.paragon.pr7os.drivers">
+    <description>Install drivers and firmware</description>
+    <message>Installing drivers and firmware needs your password</message>
+    <icon_name>pr7os</icon_name>
+    <defaults>
+      <allow_any>auth_admin</allow_any>
+      <allow_inactive>auth_admin</allow_inactive>
+      <allow_active>auth_admin_keep</allow_active>
+    </defaults>
+    <annotate key="org.freedesktop.policykit.exec.path">/usr/libexec/paragon/pr7os-drivers-helper</annotate>
+  </action>
+</policyconfig>

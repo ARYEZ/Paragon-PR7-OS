@@ -1,0 +1,290 @@
+#!/usr/bin/python3
+"""Drivers and firmware for this PC (as root, started by pkexec from Paragon Welcome). One word only:
+
+    pr7os-drivers-helper state      what's here, as JSON (no root needed): graphics cards and the driver each one uses,
+                                    whether the NVIDIA driver is installed, Secure Boot, a key waiting to be enrolled
+    pr7os-drivers-helper install    1. Debian's contrib, non-free and non-free-firmware areas turned on (the NVIDIA
+                                       driver and most firmware live there)
+                                    2. firmware: Wi-Fi, Bluetooth, sound, graphics, and the processor's microcode
+                                    3. with an NVIDIA card: the driver Debian's own nvidia-detect names for that card,
+                                       kernel headers (the driver is built for the kernel by DKMS), modesetting and
+                                       video memory kept over sleep (Plasma on Wayland needs both), and with Secure Boot
+                                       on, DKMS's signing key queued for enrolment with a one-time password
+
+Prints STEP / MOK / DONE / ERROR lines for the window. PR7OS_ROOT points /etc and /var elsewhere (tests; it also skips the
+root check); PR7OS_SIMULATE=1 makes the big installs apt-get -s (CI checks the package names in a real Debian 13)."""
+import json
+import os
+import re
+import secrets
+import subprocess
+import sys
+import tempfile
+
+ROOT = os.environ.get("PR7OS_ROOT", "/")
+SIMULATE = os.environ.get("PR7OS_SIMULATE") == "1"
+AREAS = ["main", "contrib", "non-free", "non-free-firmware"]
+FIRMWARE = ["firmware-linux-nonfree", "firmware-misc-nonfree", "firmware-amd-graphics", "firmware-iwlwifi",
+            "firmware-realtek", "firmware-atheros", "firmware-brcm80211", "firmware-mediatek", "firmware-intel-sound",
+            "firmware-sof-signed", "bluez-firmware"]
+MICROCODE = {"GenuineIntel": "intel-microcode", "AuthenticAMD": "amd64-microcode"}
+GPU_CLASSES = ("0300", "0302", "0380")             # VGA, 3D, other display controllers
+NVIDIA = "10de"
+MODPROBE = """# Paragon PR7-OS (Welcome's DRIVERS): Plasma on Wayland needs the NVIDIA driver's modesetting, and the
+# desktop survives sleep only when video memory is kept. Debian names the modules nvidia-current*, NVIDIA nvidia*:
+# both are given (modprobe ignores options for modules that aren't there).
+options nvidia-drm modeset=1 fbdev=1
+options nvidia-current-drm modeset=1 fbdev=1
+options nvidia NVreg_PreserveVideoMemoryAllocations=1
+options nvidia-current NVreg_PreserveVideoMemoryAllocations=1
+"""
+APT_OPTS = ["-o", "DPkg::Lock::Timeout=600"]
+
+
+def say(line: str) -> None:
+    print(line, flush=True)
+
+
+def path(p: str) -> str:
+    return os.path.join(ROOT, p.lstrip("/"))
+
+
+def out(args: list[str]) -> str:
+    try:
+        return subprocess.run(args, capture_output=True, text=True).stdout
+    except OSError:
+        return ""
+
+
+# ---------------------------------------------------------------- what's here
+def gpus(text: str) -> list[dict]:
+    """`lspci -nnk`'s display controllers: name, vendor / device id, the kernel driver in use."""
+    found = []
+    for line in text.splitlines():
+        if line[:1].strip():
+            m = re.match(r"\S+ [^[]*\[(\w{4})\]: (.*) \[(\w{4}):(\w{4})\]", line)
+            found.append({"class": m.group(1), "name": m.group(2), "vendor": m.group(3), "device": m.group(4),
+                          "driver": ""} if m else None)
+        elif found and found[-1] is not None and "Kernel driver in use:" in line:
+            found[-1]["driver"] = line.split(":", 1)[1].strip()
+    out_ = []
+    for g in found:
+        if g and g["class"] in GPU_CLASSES:
+            name = re.sub(r"\s*\(rev \w+\)$", "", g.pop("name"))
+            brand = re.search(r"\[([^\]]+)\]\s*$", name)            # "AD102 [GeForce RTX 4090]" -> its marketing name
+            maker = "NVIDIA" if g["vendor"] == NVIDIA else name.split(" ")[0]
+            g["name"] = f"{maker} {brand.group(1)}" if brand else name
+            out_.append(g)
+    return out_
+
+
+def installed(pattern: str) -> list[str]:
+    text = out(["dpkg-query", "-W", "-f", "${Package} ${db:Status-Status}\n", pattern])
+    return [line.split()[0] for line in text.splitlines() if line.endswith(" installed")]
+
+
+def state() -> dict:
+    cards = gpus(out(["lspci", "-nnk"]))
+    sb = out(["mokutil", "--sb-state"])
+    return {"gpus": cards,
+            "nvidia": any(g["vendor"] == NVIDIA for g in cards),
+            "in_use": any(g["vendor"] == NVIDIA and g["driver"].startswith("nvidia") for g in cards),
+            "installed": bool(installed("nvidia-*driver")),
+            "secure_boot": "SecureBoot enabled" in sb,
+            "key_waiting": bool(out(["mokutil", "--list-new"]).strip())}
+
+
+# ---------------------------------------------------------------- apt's areas
+def _add_areas(words: list[str]) -> list[str]:
+    return words + [a for a in AREAS if a not in words]
+
+
+def one_line(text: str) -> tuple[str, bool]:
+    """sources.list: Debian's own lines get every area."""
+    lines, changed = [], False
+    for line in text.splitlines():
+        m = re.match(r"^(deb(?:-src)?\s+(?:\[[^\]]*\]\s+)?\S*debian\.org\S*\s+\S+)\s+(.+?)\s*$", line)
+        if m:
+            words = m.group(2).split()
+            new = _add_areas(words)
+            if new != words:
+                line, changed = f"{m.group(1)} {' '.join(new)}", True
+        lines.append(line)
+    return "\n".join(lines) + ("\n" if text.endswith("\n") else ""), changed
+
+
+def deb822(text: str) -> tuple[str, bool]:
+    """*.sources: stanzas whose URIs are Debian's get every area in Components."""
+    stanzas, changed = re.split(r"(\n\s*\n)", text), False
+    for i in range(0, len(stanzas), 2):
+        s = stanzas[i]
+        if not re.search(r"^URIs:.*debian\.org", s, re.M | re.I):
+            continue
+        m = re.search(r"^(Components:)[ \t]*(.*)$", s, re.M | re.I)
+        if m:
+            words = m.group(2).split()
+            new = _add_areas(words)
+            if new != words:
+                stanzas[i] = s[:m.start()] + f"{m.group(1)} {' '.join(new)}" + s[m.end():]
+                changed = True
+    return "".join(stanzas), changed
+
+
+def codename() -> str:
+    try:
+        with open(path("/etc/os-release"), encoding="utf-8") as fh:
+            m = re.search(r"^VERSION_CODENAME=\"?(\w+)", fh.read(), re.M)
+            return m.group(1) if m else "trixie"
+    except OSError:
+        return "trixie"
+
+
+def enable_areas() -> bool:
+    """Every area on Debian's own sources; a sources file of our own when there are none (an install from the ISO with
+    no network). True if anything changed."""
+    changed, debian = False, False
+    files = [path("/etc/apt/sources.list")]
+    d = path("/etc/apt/sources.list.d")
+    if os.path.isdir(d):
+        files += [os.path.join(d, f) for f in sorted(os.listdir(d)) if f.endswith((".list", ".sources"))]
+    for f in files:
+        try:
+            with open(f, encoding="utf-8") as fh:
+                text = fh.read()
+        except OSError:
+            continue
+        if re.search(r"^(?!#).*debian\.org", text, re.M):
+            debian = True
+        new, did = (deb822 if f.endswith(".sources") else one_line)(text)
+        if did:
+            with open(f, "w", encoding="utf-8") as fh:
+                fh.write(new)
+            changed = True
+    if not debian:
+        os.makedirs(d, exist_ok=True)
+        c = codename()
+        with open(os.path.join(d, "paragon-debian.sources"), "w", encoding="utf-8") as fh:
+            fh.write(f"Types: deb\nURIs: http://deb.debian.org/debian/\nSuites: {c} {c}-updates\n"
+                     f"Components: {' '.join(AREAS)}\nSigned-By: /usr/share/keyrings/debian-archive-keyring.gpg\n\n"
+                     f"Types: deb\nURIs: http://security.debian.org/debian-security/\nSuites: {c}-security\n"
+                     f"Components: {' '.join(AREAS)}\nSigned-By: /usr/share/keyrings/debian-archive-keyring.gpg\n")
+        changed = True
+    return changed
+
+
+# ---------------------------------------------------------------- installing
+def known(names: list[str]) -> list[str]:
+    """The packages apt knows (a name Debian dropped would stop the whole install)."""
+    return [n for n in names if out(["apt-cache", "show", "--no-all-versions", n]).strip()]
+
+
+def apt_install(names: list[str], env: dict, real: bool = False) -> bool:
+    args = ["apt-get", *APT_OPTS, "install", "-y"] + (["-s"] if SIMULATE and not real else []) + names
+    return subprocess.run(args, env=env).returncode == 0
+
+
+def detect(ids: list[str]) -> tuple[str, str]:
+    """Debian's nvidia-detect for these cards -> (package, "") or ("", why not)."""
+    text = out(["nvidia-detect", *ids])
+    m = re.search(r"recommended to install the\s+(\S+)\s+package", text)
+    if m:
+        return m.group(1), ""
+    why = next((line.strip() for line in text.splitlines() if "not supported" in line or "Uh oh" in line), "")
+    return "", why or "nvidia-detect found no driver for this card"
+
+
+def microcode() -> list[str]:
+    try:
+        with open("/proc/cpuinfo", encoding="utf-8") as fh:
+            m = re.search(r"^vendor_id\s*:\s*(\S+)", fh.read(), re.M)
+    except OSError:
+        m = None
+    return [MICROCODE[m.group(1)]] if m and m.group(1) in MICROCODE else []
+
+
+def enrol_key() -> str:
+    """Secure Boot: DKMS signs the driver with its own key; the PC trusts it once it's enrolled (MOK manager, at the
+    next start, asks for this one-time password). Returns the password, or "" when nothing is needed."""
+    if "SecureBoot enabled" not in out(["mokutil", "--sb-state"]):
+        return ""
+    key = path("/var/lib/dkms/mok.pub")
+    if not os.path.exists(key) or "already enrolled" in out(["mokutil", "--test-key", key]):
+        return ""
+    password = "".join(secrets.choice("0123456789") for _ in range(8))     # digits: MOK manager's keyboard is US only
+    hashed = out(["mokutil", f"--generate-hash={password}"]).strip()
+    with tempfile.NamedTemporaryFile("w", suffix=".hash", delete=False) as fh:
+        fh.write(hashed + "\n")
+    try:
+        ok = subprocess.run(["mokutil", "--import", key, "--hash-file", fh.name]).returncode == 0
+    finally:
+        os.unlink(fh.name)
+    return password if ok else ""
+
+
+def install() -> int:
+    env = dict(os.environ, DEBIAN_FRONTEND="noninteractive")
+    say("STEP Turning on Debian's non-free areas (drivers and firmware)")
+    enable_areas()
+    say("STEP Reading Debian's package lists")
+    if subprocess.run(["apt-get", *APT_OPTS, "update", "-qq"], env=env).returncode:
+        say("ERROR Debian's package lists couldn't be read (is the PC online?)")
+        return 1
+    say("STEP Installing firmware (Wi-Fi, Bluetooth, sound, graphics) and microcode")
+    if not apt_install(known(FIRMWARE + microcode()), env):
+        say("ERROR the firmware couldn't be installed")
+        return 1
+    cards = [g for g in gpus(out(["lspci", "-nnk"])) if g["vendor"] == NVIDIA]
+    if not cards:
+        say("DONE firmware: restart the PC to use it")
+        return 0
+    say(f"STEP Asking Debian which driver fits the {cards[0]['name']}")
+    if not apt_install(["nvidia-detect"], env, real=True):
+        say("ERROR nvidia-detect couldn't be installed")
+        return 1
+    package, why = detect([f"{g['vendor']}:{g['device']}" for g in cards])
+    if not package:
+        say(f"ERROR Debian 13 has no driver for the {cards[0]['name']}: {why}")
+        return 1
+    release = os.uname().release
+    wanted = ["linux-headers-amd64"] + known([f"linux-headers-{release}"]) + [package] + known(["nvidia-suspend-common"])
+    say(f"STEP Installing {package} (this builds the driver for your kernel: a few minutes)")
+    if not apt_install(wanted, env):
+        say(f"ERROR {package} couldn't be installed")
+        return 1
+    if SIMULATE:
+        say(f"DONE {package} (simulated)")
+        return 0
+    say("STEP Setting up the driver for Plasma (modesetting, sleep)")
+    os.makedirs(path("/etc/modprobe.d"), exist_ok=True)
+    with open(path("/etc/modprobe.d/paragon-nvidia.conf"), "w", encoding="utf-8") as fh:
+        fh.write(MODPROBE)
+    for unit in ("nvidia-suspend.service", "nvidia-resume.service", "nvidia-hibernate.service"):
+        if subprocess.run(["systemctl", "cat", unit], capture_output=True).returncode == 0:
+            subprocess.run(["systemctl", "enable", unit], capture_output=True)
+    if "installed" not in out(["dkms", "status"]):
+        say("ERROR the driver didn't build for this kernel (dkms status shows why)")
+        return 1
+    subprocess.run(["update-initramfs", "-u"], capture_output=True)
+    password = enrol_key()
+    if password:
+        say(f"MOK {password}")
+    say(f"DONE {package}: restart the PC to use it")
+    return 0
+
+
+def main(argv: list[str]) -> int:
+    word = argv[0] if len(argv) == 1 else ""
+    if word == "state":
+        print(json.dumps(state()))
+        return 0
+    if word != "install":
+        say("ERROR say state or install")
+        return 2
+    if os.geteuid() != 0 and "PR7OS_ROOT" not in os.environ:
+        say("ERROR this needs administrator rights (start it with pkexec)")
+        return 1
+    return install()
+
+
+if __name__ == "__main__":
+    raise SystemExit(main(sys.argv[1:]))

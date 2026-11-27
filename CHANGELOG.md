@@ -1,5 +1,17 @@
 # Changelog
 
+## 0.5.1
+
+- **DRIVERS in Welcome**: firmware for any PC (Wi-Fi, Bluetooth, sound, graphics, and the processor's microcode with
+  its security fixes; the ISO carries none), and on a PC with an NVIDIA card the NVIDIA driver: the package Debian's
+  own nvidia-detect names for that card (a card Debian 13 has no driver for is said plainly, nothing is installed),
+  built for your kernel, with modesetting and video memory kept over sleep (Plasma on Wayland needs both). With Secure
+  Boot on, the driver's signing key is queued and Welcome shows a one-time password: at the next start, a blue screen
+  asks for it once (Enroll MOK, Continue, Yes, the password, Reboot). Turns on Debian's contrib, non-free and
+  non-free-firmware areas first (only on Debian's own sources).
+- CI installs the packages into a clean Debian 13 and runs the drivers helper there for an RTX 4070: the real
+  nvidia-detect chooses, apt resolves every firmware and driver package.
+
 ## 0.5.0
 
 A new ISO with everything since 0.4.0, booted and checked in CI like every x.y.0:
