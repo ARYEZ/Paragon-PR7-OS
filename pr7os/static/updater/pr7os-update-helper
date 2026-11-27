@@ -1,0 +1,47 @@
+#!/usr/bin/python3
+"""Installs Paragon PR7-OS's newest release (as root, started by pkexec). Takes no arguments: it only ever installs
+the newest release of ARYEZ/Paragon-PR7-OS, after checking each package against the release's manifest.
+Prints STEP / PROGRESS / DONE lines for the update window."""
+import os
+import sys
+import tempfile
+from pathlib import Path
+
+sys.path.insert(0, "/usr/share/paragon/update")
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))        # tests run it from the source tree
+import pr7os_update as u  # noqa: E402
+
+
+def say(*parts):
+    print(*parts, flush=True)
+
+
+def main() -> int:
+    if os.geteuid() != 0 and not u._server():
+        say("ERROR this needs administrator rights (start it with pkexec)")
+        return 1
+    try:
+        say("STEP Looking for the newest release")
+        info = u.latest()
+        pkgs = u.pending(info["manifest"], u.installed())
+        if not pkgs:
+            say(f"DONE up-to-date {info['version']}")
+            return 0
+        with tempfile.TemporaryDirectory(prefix="pr7os-update-") as tmp:
+            say(f"STEP Downloading Paragon PR7-OS {info['version']}")
+            files = u.download(info["tag"], pkgs, Path(tmp),
+                               progress=lambda i, n, name: say(f"PROGRESS {i} {n} {name}"))
+            say("STEP Installing")
+            rc = u.install(files, output=lambda line: say(f"LOG {line}"))
+        if rc:
+            say(f"ERROR apt-get stopped with code {rc}")
+            return rc
+        say(f"DONE {'logout' if u.needs_logout(pkgs) else 'installed'} {info['version']}")
+        return 0
+    except u.UpdateError as e:
+        say(f"ERROR {e}")
+        return 1
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

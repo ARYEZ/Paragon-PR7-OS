@@ -1,37 +1,7 @@
 #!/bin/sh
-# The look: the "paragon" Plasma style (Breeze Dark's art with the family's colours: the panel and launcher stay dark
-# in both finishes), the boot menu's fonts, the boot splash, icon and font caches.
+# The look came in as paragon-pr7os-look, whose postinst ran setup_look.py. Run again with --strict: a Plasma whose
+# lock screen the edits don't recognise stops the build here (on users' systems it falls back to Plasma's design).
 set -e
-src=/usr/share/plasma/desktoptheme/breeze-dark
-[ -d "$src" ] || src=/usr/share/plasma/desktoptheme/default
-rm -rf /usr/share/plasma/desktoptheme/paragon
-cp -a "$src" /usr/share/plasma/desktoptheme/paragon
-cp /usr/share/paragon/plasma-colors /usr/share/plasma/desktoptheme/paragon/colors
-python3 - <<'PY'
-import json, os, re
-d = "/usr/share/plasma/desktoptheme/paragon"
-meta = os.path.join(d, "metadata.json")
-if os.path.exists(meta):
-    m = json.load(open(meta))
-    m.setdefault("KPlugin", {})
-    m["KPlugin"]["Id"] = "paragon"
-    m["KPlugin"]["Name"] = "Paragon"
-    m["KPlugin"]["Description"] = "Breeze's art in the Paragon family's colours"
-    for k in [k for k in m["KPlugin"] if k.startswith(("Name[", "Description["))]:
-        del m["KPlugin"][k]
-    json.dump(m, open(meta, "w"), indent=2)
-desk = os.path.join(d, "metadata.desktop")
-if os.path.exists(desk):
-    t = open(desk).read()
-    t = re.sub(r"^Name(\[.*\])?=.*$", "", t, flags=re.M)
-    t = re.sub(r"^X-KDE-PluginInfo-Name=.*$", "X-KDE-PluginInfo-Name=paragon", t, flags=re.M)
-    t = t.replace("[Desktop Entry]", "[Desktop Entry]\nName=Paragon", 1)
-    open(desk, "w").write(t)
-PY
-fc-cache -f
-gtk-update-icon-cache -f -q /usr/share/icons/hicolor || true
-update-desktop-database -q /usr/share/applications || true
-python3 /usr/share/paragon/grub-fonts.py /usr/share/grub/themes/paragon /usr/share/fonts/truetype/paragon-inter
-plymouth-set-default-theme paragon
-# the lock screen in the login screen's look (Plasma's logic, our look; stops the build if Plasma's files changed)
-python3 /usr/share/paragon/lockscreen.py
+python3 /usr/share/paragon/setup_look.py configure --strict
+grep -q "ParagonClock" /usr/share/plasma/shells/org.kde.plasma.desktop/contents/lockscreen/LockScreenUi.qml \
+    || { echo "the lock screen isn't restyled"; exit 1; }

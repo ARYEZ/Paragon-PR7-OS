@@ -38,8 +38,18 @@ jobs:
           PR7OS_FAMILY: ${{ github.workspace }}/family
         run: python -m pytest -q
 
-  iso:
+  update-test:
     needs: test
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - name: A real update in Debian 13 (old updater installed with apt, updated by the helper from a stand-in release)
+        run: |
+          docker run --rm -v "$PWD:/work" -w /work debian:trixie bash -c \
+            "apt-get update -qq && apt-get install -y -qq python3 dpkg-dev > /dev/null && python3 tools/update_test.py"
+
+  iso:
+    needs: [test, update-test]
     runs-on: ubuntu-24.04
     timeout-minutes: 180
     permissions:
@@ -78,6 +88,9 @@ jobs:
           echo "ISO=PR7-OS-$PR7OS_VERSION-amd64.iso" >> "$GITHUB_ENV"
           ls -la PR7-OS-*.iso
           sha256sum PR7-OS-*.iso > "PR7-OS-$PR7OS_VERSION-amd64.iso.sha256"
+          sudo chown -R "$USER" debs
+          cp debs/paragon-pr7os-updates_*_all.deb debs/paragon-pr7os-updates.deb
+          ls -la debs
           tail -n 30 live/build.log || true
       - name: Boot it (QEMU with KVM) and take screenshots
         run: |
@@ -134,6 +147,8 @@ jobs:
             PR7-OS-*.iso
             PR7-OS-*.iso.part*
             PR7-OS-*.iso.sha256
+            debs/*.deb
+            debs/pr7os-update.json
             shots/desktop.png
             shots/login.png
             shots/boot_menu.png

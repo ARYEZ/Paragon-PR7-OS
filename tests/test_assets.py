@@ -198,3 +198,10 @@ def test_login_has_no_onscreen_keyboard_and_the_panel_pins_a_list(built):
     layout = (root / "usr/share/plasma/look-and-feel/org.paragon.pr7os.obsidian/contents/layouts/"
                      "org.kde.plasma.desktop-layout.js").read_text()
     assert 'writeConfig("launchers", ["applications:pr7-e.desktop", ' in layout
+
+
+def test_the_lock_screen_has_the_paragon_wallpaper(built):
+    root, _ = built
+    conf = (root / "etc/xdg/kscreenlockerrc").read_text()
+    assert "[Greeter]\nWallpaperPlugin=org.kde.image" in conf
+    assert "[Greeter][Wallpaper][org.kde.image][General]\nImage=file:///usr/share/wallpapers/Paragon/" in conf

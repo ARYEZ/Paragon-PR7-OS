@@ -65,7 +65,7 @@ def test_the_image_gets_the_script_and_the_clock(built):
     assert (root / "usr/share/paragon/lockscreen/ParagonClock.qml").exists()
     assert "loglevel=3" in (root / "etc/default/grub.d/paragon.cfg").read_text()
     hook = (ROOT / "live/config/hooks/normal/0200-paragon-look.hook.chroot").read_text()
-    assert "python3 /usr/share/paragon/lockscreen.py" in hook
+    assert "setup_look.py configure --strict" in hook                     # which runs lockscreen.py --strict
     assert "loglevel=3" in (ROOT / "live/auto/config").read_text()
 
 

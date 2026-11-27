@@ -36,8 +36,10 @@ def test_live_boot_parameters():
 
 def test_hooks_use_what_the_image_has():
     look = (LIVE / "config/hooks/normal/0200-paragon-look.hook.chroot").read_text()
-    assert "/usr/share/paragon/plasma-colors" in look and "plymouth-set-default-theme paragon" in look
-    assert "/usr/share/paragon/grub-fonts.py" in look
+    assert "setup_look.py configure --strict" in look
+    setup = (ROOT / "pr7os/static/setup_look.py").read_text()
+    assert 'SHARE / "plasma-colors"' in setup and '"plymouth-set-default-theme", "paragon"' in setup
+    assert 'SHARE / "grub-fonts.py"' in setup and "lockscreen.py" in setup
     system = (LIVE / "config/hooks/normal/0300-paragon-system.hook.chroot").read_text()
     assert "branding: paragon" in system and "update-initramfs" in system
 

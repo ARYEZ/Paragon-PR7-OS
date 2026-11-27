@@ -220,7 +220,7 @@ def main(iso: str, out_dir: str) -> int:
               "keyboard-layouts=us live-config.noautologin console=ttyS0,115200 console=tty0")
     m = Machine(["-kernel", str(work / "vmlinuz"), "-initrd", str(work / "initrd.img"), "-append", append,
                  "-cdrom", iso], work, "login")
-    login_ok = lock_shown = unlocked = False
+    login_ok = lock_shown = unlocked = packaged = False
     try:
         while m.elapsed() < 240:
             img = m.shot()
@@ -252,6 +252,10 @@ def main(iso: str, out_dir: str) -> int:
         back.save(out / "unlocked.png")
         lock_shown = difference(locked, desktop) > 12
         unlocked = difference(back, desktop) < 8
+        pkgs = m.guest("/usr/bin/dpkg-query", ["-W", "-f", "${Package} ${Version}\n", "paragon-pr7os-*"])
+        (out / "packages.txt").write_text(pkgs)
+        packaged = all(f"paragon-pr7os-{p} " in pkgs for p in ("look", "apps", "python", "updates"))
+        result.append(f"PR7-OS packages: {'all four' if packaged else 'MISSING'}")
         (out / "journal.txt").write_text(m.guest("/usr/bin/journalctl", ["-b", "--no-pager", "-o", "short-monotonic"], 120))
         (out / "lockscreen-files.txt").write_text(m.guest("/bin/sh", ["-c",
             "ls -la /usr/share/plasma/shells/org.kde.plasma.desktop/contents/lockscreen/; "
@@ -266,7 +270,7 @@ def main(iso: str, out_dir: str) -> int:
     timeline(frames, out / "timeline.png")
     (out / "result.txt").write_text("\n".join(result) + "\n")
     print("\n".join(result))
-    return 0 if desktop_ok and login_ok and lock_shown and unlocked else 1
+    return 0 if desktop_ok and login_ok and lock_shown and unlocked and packaged else 1
 
 
 if __name__ == "__main__":

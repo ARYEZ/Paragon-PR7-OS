@@ -1,0 +1,48 @@
+#!/usr/bin/python3
+"""Paragon PR7-OS updates.
+
+    pr7os-update            the update window (what's new, UPDATE)
+    pr7os-update --check    the daily check (the systemd timer): a notification when there's something newer
+"""
+import os
+import subprocess
+import sys
+
+sys.path.insert(0, "/usr/share/paragon/update")
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+import pr7os_update as u  # noqa: E402
+
+VENV_PYTHON = "/opt/paragon/venv/bin/python"          # PySide6 for the window
+WINDOW = "/usr/share/paragon/update/window.py"
+
+
+def window() -> int:
+    if os.path.exists(VENV_PYTHON) and os.path.exists(WINDOW):
+        os.execv(VENV_PYTHON, [VENV_PYTHON, WINDOW])
+    return subprocess.call(["pkexec", "/usr/libexec/paragon/pr7os-update-helper"])   # no window: the terminal
+
+
+def check() -> int:
+    try:
+        info = u.latest()
+    except u.UpdateError as e:
+        print(e)
+        return 0                                      # offline: say nothing, try again tomorrow
+    pkgs = u.pending(info["manifest"], u.installed())
+    if not pkgs or u.skipped() == info["version"]:
+        return 0
+    done = subprocess.run(["notify-send", "-a", "Paragon PR7-OS", "-i", "pr7os",
+                           "--action=update=UPDATE", "--action=later=LATER", "--action=skip=SKIP THIS VERSION",
+                           f"Paragon PR7-OS {info['version']} is ready",
+                           "The new look, apps and fixes. Updating takes a minute or two."],
+                          capture_output=True, text=True)
+    answer = done.stdout.strip()
+    if answer == "update":
+        return window()
+    if answer == "skip":
+        u.skip(info["version"])
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(check() if "--check" in sys.argv[1:] else window())

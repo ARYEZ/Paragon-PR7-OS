@@ -330,7 +330,12 @@ def plasma_settings(finish: str) -> dict[str, dict[str, dict[str, str]]]:
                                             "ButtonsOnLeft": "", "ButtonsOnRight": "IAX"}},
         "kcminputrc": {"Mouse": {"cursorTheme": "breeze_cursors"}},
         "ksplashrc": {"KSplash": {"Engine": "KSplashQML", "Theme": lnf}},
-        "kscreenlockerrc": {"Greeter][Wallpaper][org.kde.image][General": {"Image": "Paragon"}},
+        # the lock screen's wallpaper: the plugin named, and the wallpaper as the desktop gives it (a full path; the
+        # bare name "Paragon" isn't found, and 0.1.1 locked on KDE's own purple picture)
+        "kscreenlockerrc": {"Greeter": {"WallpaperPlugin": "org.kde.image"},
+                            "Greeter][Wallpaper][org.kde.image][General": {
+                                "Image": "file:///usr/share/wallpapers/Paragon/",
+                                "PreviewImage": "file:///usr/share/wallpapers/Paragon/"}},
     }
 
 
@@ -570,6 +575,8 @@ def build(root: Path) -> list[Path]:
                      'GRUB_DISTRIBUTOR="Paragon PR7-OS"\nGRUB_THEME="/usr/share/grub/themes/paragon/theme.txt"\n'
                      'GRUB_GFXMODE="1920x1080,auto"\nGRUB_TIMEOUT=5\n'
                      'GRUB_CMDLINE_LINUX_DEFAULT="quiet splash loglevel=3"\n'))
+    # what the look package does once installed (its postinst; dpkg triggers run it again on Plasma's updates)
+    out.append(write(root, f"{share}/paragon/setup_look.py", (STATIC / "setup_look.py").read_text(encoding="utf-8")))
     # the lock screen: Plasma's own (it also unlocks), restyled in the image by this script
     out.append(write(root, f"{share}/paragon/lockscreen.py", (STATIC / "lockscreen.py").read_text(encoding="utf-8")))
     out.append(write(root, f"{share}/paragon/lockscreen/ParagonClock.qml",

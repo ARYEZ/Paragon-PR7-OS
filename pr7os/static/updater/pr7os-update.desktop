@@ -1,0 +1,9 @@
+[Desktop Entry]
+Type=Application
+Name=PR7-OS Update
+GenericName=System Update
+Comment=Install the newest Paragon PR7-OS
+Exec=pr7os-update
+Icon=pr7os
+Categories=System;Settings;
+Terminal=false
