@@ -18,6 +18,7 @@ grep -q '^NAME="Paragon PR7-OS"' /usr/lib/os-release || fail "os-release isn't P
 grep -q ParagonClock /usr/share/plasma/shells/org.kde.plasma.desktop/contents/lockscreen/LockScreenUi.qml \
     || fail "the lock screen wasn't restyled"
 [ "$(readlink /etc/skel/.face.icon)" = /usr/share/paragon/face.png ] || fail "new accounts don't get Paragon's picture"
+! ls -a /etc/skel | grep -q paragon-orig || fail "Debian's set-aside pictures are in /etc/skel (new accounts copy them)"
 [ -d /usr/share/plasma/desktoptheme/paragon ] || fail "no Paragon Plasma style"
 echo "look set up"
 # the system package's postinst: the firewall marked on, Flathub a source

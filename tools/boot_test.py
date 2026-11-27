@@ -258,13 +258,13 @@ def main(iso: str, out_dir: str) -> int:
         packaged = all(f"paragon-pr7os-{p} " in pkgs for p in ("look", "apps", "python", "updates", "system"))
         result.append(f"PR7-OS packages: {'all five' if packaged else 'MISSING'}")
         system = m.guest("/bin/sh", ["-c",
-            "ufw status verbose; echo ---; flatpak remotes --system; echo ---; systemctl is-active avahi-daemon cups; "
-            "echo ---; for u in /home/*; do ls -la \"$u\"/.face* 2>&1; done; ls -la /var/lib/AccountsService/icons "
+            "ufw status verbose; echo @@PR7@@; flatpak remotes --system; echo @@PR7@@; "
+            "systemctl is-active avahi-daemon cups; echo @@PR7@@; for u in /home/*; do ls -la \"$u\"/.face* 2>&1; done; ls -la /var/lib/AccountsService/icons "
             "2>&1; cat /var/lib/AccountsService/users/* 2>&1"])
         (out / "system.txt").write_text(system)
         firewall_on = "Status: active" in system and "22/tcp" in system
         flathub_listed = "\nflathub" in system or system.startswith("flathub")
-        parts = system.split("---")
+        parts = system.split("@@PR7@@")                   # ufw draws its table with ------ lines
         avahi_on = len(parts) > 2 and parts[2].split()[:1] == ["active"]
         result.append(f"firewall: {'on' if firewall_on else 'OFF'}; Flathub: {'listed' if flathub_listed else 'MISSING'}; "
                       f"avahi: {'running' if avahi_on else 'NOT RUNNING'}")

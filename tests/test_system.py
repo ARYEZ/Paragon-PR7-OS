@@ -126,7 +126,8 @@ def test_new_accounts_get_paragons_picture_from_skel(people):
     mod.skel_faces(root)
     assert os.readlink(skel / ".face.icon") == "/usr/share/paragon/face.png"
     assert os.readlink(skel / ".face") == "/usr/share/paragon/face.png"
-    assert (skel / ".face.icon.paragon-orig").read_bytes() == b"DEBIAN SWIRL COPY"
+    assert (root / "etc/paragon/skel-orig/.face.icon").read_bytes() == b"DEBIAN SWIRL COPY"
+    assert sorted(f.name for f in skel.iterdir()) == [".face", ".face.icon"]   # nothing else for new accounts to copy
     mod.faces(root)
     assert os.readlink(root / "home/kim/.face.icon") == "/usr/share/paragon/face.png"   # the copied swirl replaced
     assert (root / "var/lib/AccountsService/icons/sam").read_bytes() == b"SAM'S OWN PHOTO"   # sam chose a photo:

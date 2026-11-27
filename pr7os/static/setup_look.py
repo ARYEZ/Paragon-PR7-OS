@@ -14,8 +14,8 @@ Every step can run any number of times (each update runs it again):
 - the system's name: Debian's os-release diverted, NAME / PRETTY_NAME / LOGO Paragon's, ID still "debian";
 - the account picture: accounts with no picture, or still Debian's (byte for byte a file Debian ships), get Paragon's
   (AccountsService's icon, which the login and lock screens read, and ~/.face.icon); a picture you chose is never
-  touched. New accounts get it from /etc/skel: Debian's /etc/skel/.face(.icon) (desktop-base's swirl) is diverted aside
-  and replaced by a link to Paragon's, as os-release is.
+  touched. New accounts get it from /etc/skel: Debian's /etc/skel/.face(.icon) (desktop-base's swirl) is diverted to
+  /etc/paragon/skel-orig (outside skel, or every new account would get copies) and replaced by a link to Paragon's.
 Standard library only: it runs with Debian's python3, before or without the apps' environment.
 """
 from __future__ import annotations
@@ -113,6 +113,11 @@ def accounts(root: Path) -> list[tuple[str, int, int, Path]]:
 
 
 SKEL_FACES = ("etc/skel/.face.icon", "etc/skel/.face")
+SKEL_ORIG = "etc/paragon/skel-orig"          # same filesystem as /etc/skel (dpkg-divert --rename renames)
+
+
+def skel_orig(root: Path, rel: str) -> Path:
+    return root / SKEL_ORIG / Path(rel).name
 
 
 def skel_faces(root: Path = Path("/")) -> None:
@@ -125,11 +130,13 @@ def skel_faces(root: Path = Path("/")) -> None:
         listed = subprocess.run(["dpkg-divert", "--list", "/" + rel], capture_output=True, text=True).stdout \
             if root == Path("/") and shutil.which("dpkg-divert") else ""
         if "paragon" not in listed and (path.exists() or path.is_symlink()):
+            orig = skel_orig(root, rel)
+            orig.parent.mkdir(parents=True, exist_ok=True)
             if root == Path("/") and shutil.which("dpkg-divert"):
-                subprocess.run(["dpkg-divert", "--package", "paragon", "--divert", f"/{rel}.paragon-orig", "--rename",
-                                "--add", "/" + rel], check=True)
+                subprocess.run(["dpkg-divert", "--package", "paragon", "--divert", "/" + str(orig.relative_to(root)),
+                                "--rename", "--add", "/" + rel], check=True)
             else:                                        # tests: a stand-in root, the same outcome
-                path.rename(path.with_name(path.name + ".paragon-orig"))
+                path.rename(orig)
         path.parent.mkdir(parents=True, exist_ok=True)
         if path.is_symlink() or path.exists():
             path.unlink()
@@ -146,7 +153,7 @@ def unskel_faces(root: Path = Path("/")) -> None:
             if "paragon" in listed:
                 subprocess.run(["dpkg-divert", "--package", "paragon", "--rename", "--remove", "/" + rel], check=True)
         else:
-            orig = path.with_name(path.name + ".paragon-orig")
+            orig = skel_orig(root, rel)
             if orig.exists() or orig.is_symlink():
                 orig.rename(path)
 
@@ -154,7 +161,7 @@ def unskel_faces(root: Path = Path("/")) -> None:
 def debian_pictures(root: Path) -> set[bytes]:
     found = set()
     for rel in SKEL_FACES:                               # what accounts made before PR7-OS's look copied from skel
-        orig = root / (rel + ".paragon-orig")
+        orig = skel_orig(root, rel)
         if orig.is_file():
             found.add(orig.read_bytes())
     for d in DEBIAN_PICTURES:
