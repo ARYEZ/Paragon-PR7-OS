@@ -597,6 +597,12 @@ def build(root: Path) -> list[Path]:
                      'GRUB_CMDLINE_LINUX_DEFAULT="quiet splash loglevel=3"\n'))
     # what the look package does once installed (its postinst; dpkg triggers run it again on Plasma's updates)
     out.append(write(root, f"{share}/paragon/setup_look.py", (STATIC / "setup_look.py").read_text(encoding="utf-8")))
+    # one finish for the whole desktop: the apps' OBSIDIAN / AURORA and Plasma's global theme kept together
+    out.append(write(root, f"{share}/paragon/finish_sync.py", (STATIC / "finish_sync.py").read_text(encoding="utf-8")))
+    out.append(write(root, "etc/xdg/autostart/pr7os-finish-sync.desktop",
+                     "[Desktop Entry]\nType=Application\nName=Paragon finish\nComment=The Paragon apps' finish and "
+                     "Plasma's global theme kept together\nExec=python3 /usr/share/paragon/finish_sync.py\n"
+                     "NoDisplay=true\nOnlyShowIn=KDE;\nX-KDE-autostart-phase=2\n"))
     # the lock screen: Plasma's own (it also unlocks), restyled in the image by this script
     out.append(write(root, f"{share}/paragon/lockscreen.py", (STATIC / "lockscreen.py").read_text(encoding="utf-8")))
     out.append(write(root, f"{share}/paragon/lockscreen/ParagonClock.qml",
