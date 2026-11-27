@@ -10,9 +10,12 @@ Layout in the image:
     /usr/share/applications/pr7-<x>.desktop       the menu entry
     /usr/share/icons/hicolor/256x256/apps/paragon-pr7-<x>.png
     /etc/xdg/mimeapps.list                        folders, images, PDFs, media, text, archives: the family's apps
+    /usr/share/kglobalaccel/pr7-<x>.desktop       apps with Plasma shortcuts (Plasma registers the X-KDE-Shortcuts of
+                                                  menu entries found here: Spectacle's way to own Print)
+    /etc/xdg/autostart/paragon-pr7-<x>.desktop    apps that start at sign-in (PR7-Q, as Greenshot does)
 
 Only apps that work on Linux are here. Left out (Windows-only for now): PR7-AR (Autoruns), PR7-UN (uninstaller),
-PR7-U (Windows installers), PR7-CB / PR7-LN / PR7-Q / PR7-IS (global keys, Wayland screenshots, the NTFS index).
+PR7-U (Windows installers), PR7-CB / PR7-LN / PR7-IS (global keys, Wayland's clipboard, the NTFS index).
 """
 from __future__ import annotations
 
@@ -32,6 +35,8 @@ class App:
     files: bool = False            # takes files / folders on its command line (%F)
     mime: tuple[str, ...] = field(default_factory=tuple)
     default_for: tuple[str, ...] = field(default_factory=tuple)   # the system opens these with it
+    actions: tuple[tuple[str, str, str, str], ...] = field(default_factory=tuple)  # (id, name, arguments, shortcut)
+    autostart: str = ""            # arguments it starts with at sign-in ("" = it doesn't)
 
     @property
     def key(self) -> str:
@@ -82,12 +87,17 @@ APPS = [
         ("application/vnd.sqlite3", "application/x-sqlite3")),
     App("HX", "Hex", "Hex Editor", "Development;Utility;", True),
     App("WM", "Compare", "File Compare", "Development;Utility;", True),
+    App("Q", "Screenshots", "Screenshot Tool", "Graphics;Utility;",
+        actions=(("region", "Capture region", "--region", "Print"),
+                 ("lastregion", "Capture last region", "--last-region", "Shift+Print"),
+                 ("window", "Capture window", "--window", "Alt+Print"),
+                 ("full", "Capture full screen", "--full", "Ctrl+Print")),
+        autostart="--tray"),
 ]
 
 LEFT_OUT = {"AR": "Autoruns: Windows' startup places", "UN": "uninstaller: Windows programs",
             "U": "family installer: Windows setups", "CB": "clipboard history: global keys, Wayland's clipboard",
-            "LN": "launcher: global keys (Plasma has KRunner)", "Q": "screenshots: Wayland's screenshot portal",
-            "IS": "file search: the NTFS index"}
+            "LN": "launcher: global keys (Plasma has KRunner)", "IS": "file search: the NTFS index"}
 
 
 def launcher(app: App) -> str:
@@ -104,7 +114,20 @@ def desktop_entry(app: App) -> str:
              "X-KDE-Paragon=true"]
     if app.mime:
         lines.append("MimeType=" + ";".join(app.mime) + ";")
+    if app.actions:
+        lines.append("Actions=" + ";".join(a[0] for a in app.actions) + ";")
+        for ident, name, args, shortcut in app.actions:
+            lines += ["", f"[Desktop Action {ident}]", f"Name={name}", f"Exec={app.command} {args}"]
+            if shortcut:
+                lines.append(f"X-KDE-Shortcuts={shortcut}")
     return "\n".join(lines) + "\n"
+
+
+def autostart_entry(app: App) -> str:
+    return ("[Desktop Entry]\nType=Application\n"
+            f"Name=PR7-{app.letter} {app.name}\nComment=Paragon PR7-{app.letter} at sign-in (switch it off in its "
+            f"Preferences)\nExec={app.command} {app.autostart}\nIcon=paragon-pr7-{app.key}\nTerminal=false\n"
+            "X-KDE-autostart-phase=2\n")
 
 
 def mimeapps() -> str:
@@ -159,6 +182,16 @@ def stage(family: Path, root: Path) -> list[Path]:
         icon.parent.mkdir(parents=True, exist_ok=True)
         shutil.copy2(src / "icons" / "app.png", icon)
         out += [dest, exe, entry, icon]
+        if any(a[3] for a in app.actions):          # Plasma takes the shortcuts of entries it finds here
+            keys = root / "usr/share/kglobalaccel" / f"{app.command}.desktop"
+            keys.parent.mkdir(parents=True, exist_ok=True)
+            keys.write_text(desktop_entry(app), encoding="utf-8")
+            out.append(keys)
+        if app.autostart:
+            auto = root / "etc/xdg/autostart" / f"paragon-pr7-{app.key}.desktop"
+            auto.parent.mkdir(parents=True, exist_ok=True)
+            auto.write_text(autostart_entry(app), encoding="utf-8")
+            out.append(auto)
     req = root / "opt/paragon/requirements.txt"
     req.parent.mkdir(parents=True, exist_ok=True)
     req.write_text("\n".join(requirements(family)) + "\n", encoding="utf-8")

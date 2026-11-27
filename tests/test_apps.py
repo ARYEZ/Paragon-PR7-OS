@@ -30,7 +30,8 @@ def test_every_app_has_code_launcher_entry_and_icon(staged):
         exe = staged / "usr/bin" / app.command
         assert os.access(exe, os.X_OK) and f"-m {app.package}" in exe.read_text()
         entry = (staged / "usr/share/applications" / f"{app.command}.desktop").read_text()
-        keys = dict(line.split("=", 1) for line in entry.splitlines()[1:])
+        main = entry.split("\n\n")[0]                    # the [Desktop Entry] section (actions follow)
+        keys = dict(line.split("=", 1) for line in main.splitlines()[1:])
         assert keys["Type"] == "Application" and keys["Exec"].split()[0] == app.command
         assert keys["Icon"] == f"paragon-pr7-{app.key}" and keys["Categories"].endswith(";")
         assert (staged / f"usr/share/icons/hicolor/256x256/apps/paragon-pr7-{app.key}.png").exists()
@@ -81,3 +82,23 @@ def test_every_app_starts_on_linux(staged):
             p.kill()
         p.wait()
     assert not dead, "\n\n".join(f"PR7-{k} stopped:\n{v}" for k, v in dead.items())
+
+
+def test_pr7q_owns_print_through_plasma_and_starts_at_sign_in(tmp_path):
+    """Plasma registers the X-KDE-Shortcuts of menu entries in /usr/share/kglobalaccel (Spectacle's way to own Print);
+    each runs `pr7-q --region` etc., which hands the capture to the running PR7-Q."""
+    q = next(a for a in apps.APPS if a.letter == "Q")
+    assert "Q" not in apps.LEFT_OUT
+    entry = apps.desktop_entry(q)
+    sections = {}
+    for block in entry.strip().split("\n\n"):
+        lines = block.splitlines()
+        sections[lines[0]] = dict(l.split("=", 1) for l in lines[1:])
+    assert sections["[Desktop Entry]"]["Actions"] == "region;lastregion;window;full;"
+    assert sections["[Desktop Action region]"] == {"Name": "Capture region", "Exec": "pr7-q --region",
+                                                   "X-KDE-Shortcuts": "Print"}
+    assert sections["[Desktop Action full]"]["X-KDE-Shortcuts"] == "Ctrl+Print"
+    assert "Exec=pr7-q --tray" in apps.autostart_entry(q)
+    from pr7os import packages
+    assert packages.is_app_file("usr/share/kglobalaccel/pr7-q.desktop")
+    assert packages.is_app_file("etc/xdg/autostart/paragon-pr7-q.desktop")

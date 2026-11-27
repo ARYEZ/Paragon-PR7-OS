@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.2.3
+
+- **PR7-Q Screenshots joins PR7-OS** (PR7-Q 0.4.0, which now runs on Plasma's Wayland desktop): Print captures a
+  region, Shift+Print the last region, Alt+Print a window (Plasma's dialog: pick the window), Ctrl+Print the full
+  screen; then PR7-Q's after-capture menu and editor, as on Windows. It starts at sign-in in the panel's tray (switch
+  that off in its Preferences). The first capture may ask once whether PR7-Q may take screenshots: allow it.
+- PR7-PM 0.2.4 (from the previous update): copied passwords stay out of Plasma's clipboard history; locking the screen
+  locks PR7-PM.
+
 ## 0.2.2
 
 - **0.2.1's additions now actually install.** The updater only installed the four packages it knew by name, so the

@@ -15,11 +15,13 @@ a live ISO with the Calamares installer. The owner writes Python; explain the wh
   by a hook: the panel and launcher stay dark in both finishes, as menus and keys do), SDDM, Plymouth, GRUB, Calamares
   branding, `/etc/xdg` defaults (OBSIDIAN). Hand-written parts (QML, Plymouth script, Calamares, grub-fonts.py) are in
   `pr7os/static/` and carry no colours of their own beyond the family's.
-- **The apps** (`pr7os/apps.py`): 19 apps copied from their repositories (checked out next to this one, or
+- **The apps** (`pr7os/apps.py`): 20 apps copied from their repositories (checked out next to this one, or
   `PR7OS_FAMILY`) to `/opt/paragon/apps/<repo>/`, one venv `/opt/paragon/venv` built in the image from the merged
   requirements (PySide6 as Essentials + Addons + Pdf: no web engine), launchers `/usr/bin/pr7-<x>`, menu entries,
   icons, `/etc/xdg/mimeapps.list` (folders PR7-E, images PR7-P, PDF PR7-R, media PR7-M, text PR7-W, archives PR7-Z).
-  Left out for now (`LEFT_OUT`): AR, UN, U (Windows-only), CB, LN, Q, IS (global keys, Wayland, NTFS).
+  Left out for now (`LEFT_OUT`): AR, UN, U (Windows-only), CB, LN, IS (global keys, Wayland, NTFS). `App.actions`
+  (id, name, args, shortcut) become menu actions; with a shortcut the entry is also copied to /usr/share/kglobalaccel
+  (Plasma registers X-KDE-Shortcuts from there: PR7-Q owns Print); `App.autostart` -> /etc/xdg/autostart.
 - **The ISO**: `live/` is a live-build configuration (`auto/config`, `package-lists/paragon.list.chroot`, hooks:
   0100 apps venv + every app imports, 0200 look (Plasma style, GRUB fonts, Plymouth), 0300 system (os-release diverted,
   ID stays debian; Calamares branding; initramfs)). The generated tree goes in as `includes.chroot_after_packages`.

@@ -57,7 +57,8 @@ def is_app_file(rel: str) -> bool:
     return (rel.startswith(("opt/paragon/apps/", "usr/bin/pr7-")) or rel == "opt/paragon/requirements.txt"
             or rel == "etc/xdg/mimeapps.list"
             or (rel.startswith("usr/share/applications/pr7-") and rel.endswith(".desktop"))
-            or rel.startswith("usr/share/icons/hicolor/256x256/apps/paragon-pr7-"))
+            or rel.startswith("usr/share/icons/hicolor/256x256/apps/paragon-pr7-")
+            or rel.startswith(("usr/share/kglobalaccel/pr7-", "etc/xdg/autostart/paragon-pr7-")))
 
 
 def split(root: Path) -> dict[str, list[str]]:
