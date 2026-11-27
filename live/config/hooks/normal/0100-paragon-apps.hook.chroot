@@ -9,7 +9,10 @@ pyside=$(grep -i '^pyside6' /opt/paragon/requirements.txt | sed 's/^[Pp]y[Ss]ide
 /opt/paragon/venv/bin/pip install --no-cache-dir -r /tmp/paragon-req.txt \
     "PySide6_Essentials${pyside}" "PySide6_Addons${pyside}" "PySide6_Pdf"
 rm -f /tmp/paragon-req.txt
-/opt/paragon/venv/bin/python -m compileall -q /opt/paragon/apps /opt/paragon/venv/lib
+# byte-compile: the apps strictly (an error there is a bug); the packages as far as they go (PySide6 ships template
+# files named .py that aren't Python); the import check below is what proves the environment works
+/opt/paragon/venv/bin/python -m compileall -q /opt/paragon/apps
+/opt/paragon/venv/bin/python -m compileall -q -x '(\.tmpl\.py$|/deploy_lib/)' /opt/paragon/venv/lib > /dev/null || true
 # every app imports (a broken environment fails the build, not the user's first click)
 for app in /opt/paragon/apps/paragon-pr7-*; do
     pkg=$(basename "$app" | sed 's/paragon-pr7-/pr7/')
