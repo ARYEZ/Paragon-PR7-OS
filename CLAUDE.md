@@ -121,3 +121,6 @@ a live ISO with the Calamares installer. The owner writes Python; explain the wh
 - Tests: `python -m pytest` (offscreen). Never the real settings or system.
 - Releases: bump `__version__` in `pr7os/__init__.py` and add a `## x.y.z` section to CHANGELOG.md, then push: CI
   publishes once the packages installed cleanly in Debian 13 (x.y.0 versions: once the ISO built and booted).
+- **ISOs only when the owner asks** (the owner's rule, repeated): every release is a package-only x.y.z (z > 0), out in
+  ~10 minutes; an x.y.0 (which builds and boot-tests an ISO, ~1 hour) only on request or for a new install image. If
+  a change can only be proven by the boot test, say so and let the owner decide.
