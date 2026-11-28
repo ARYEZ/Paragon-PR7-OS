@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.13.0
+
+A new ISO with the login screen's input driver (0.12.1), remote desktop through xrdp, the network made the PC's on
+TURN ON, and awake while connected. Its boot test checks the live user signs in at the login screen again, and the RDP
+login, Welcome's keys, sleep / wake and every app as before.
+
 ## 0.12.1
 
 - **The login screen's keyboard and mouse**: the login screen (SDDM) runs on an X server, and that server had no input
