@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.9.0
+
+A new ISO. 0.8.0's boot test passed everything (remote desktop's rules included) except the encrypted disk's
+question in the theme: it was asked, typed into and answered, but in Plymouth's text mode. This ISO's boot test
+records what the splash has at that moment (theme, plugins, fonts, graphics devices) to find out why.
+
 ## 0.8.1
 
 0.8.0's packages, without waiting for its ISO (its boot test passed everything but one: see 0.9.0):
