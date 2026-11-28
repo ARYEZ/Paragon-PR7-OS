@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.7.1
+
+- **pr7os-update over SSH**: with no screen (an SSH session) it no longer tries to open its window (Qt aborted: "could
+  not connect to display"); it runs the update in the terminal instead: your password, then each step.
+  `pr7os-update --back` goes back to the release before, the window's GO BACK.
+
 ## 0.7.0
 
 A new ISO with everything since 0.5.0: DRIVERS (0.5.1), an encrypted disk by default with the splash asking for its

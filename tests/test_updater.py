@@ -302,3 +302,31 @@ def test_the_newest_version_wins_over_githubs_latest_mark(release, monkeypatch):
     newer = {"paragon-pr7os-look": "10.0.0", "paragon-pr7os-updates": "10.0.0"}
     assert u.is_older(u.latest(), newer) and not u.is_older(u.latest(), {"paragon-pr7os-look": "9.9.8"})
     assert not u.is_older(u.latest(), {})
+
+
+def test_over_ssh_the_update_runs_in_the_terminal(monkeypatch):
+    """No screen (an SSH session): no window (Qt would abort), the helper through pkexec in the terminal."""
+    from importlib.machinery import SourceFileLoader
+    loader = SourceFileLoader("pr7os_update_cmd", str(UPD / "pr7os-update"))
+    spec = importlib.util.spec_from_loader("pr7os_update_cmd", loader)
+    cmd = importlib.util.module_from_spec(spec)
+    loader.exec_module(cmd)
+    calls = []
+    monkeypatch.setattr(cmd.subprocess, "call", lambda args: calls.append(args) or 0)
+    def execv(*a):                                                   # a real exec never comes back
+        calls.append(["window"])
+        raise SystemExit(0)
+    monkeypatch.setattr(cmd.os, "execv", execv)
+    monkeypatch.delenv("WAYLAND_DISPLAY", raising=False)
+    monkeypatch.delenv("DISPLAY", raising=False)
+    assert not cmd.has_screen()
+    cmd.window()
+    cmd.terminal(back=True)
+    assert calls == [["pkexec", "/usr/libexec/paragon/pr7os-update-helper"],
+                     ["pkexec", "/usr/libexec/paragon/pr7os-update-helper", "previous"]]
+    monkeypatch.setenv("WAYLAND_DISPLAY", "wayland-0")
+    monkeypatch.setattr(cmd.os.path, "exists", lambda p: True)
+    calls.clear()
+    with pytest.raises(SystemExit):
+        cmd.window()
+    assert calls == [["window"]]                                     # on the desktop: the window as before

@@ -1,7 +1,9 @@
 #!/usr/bin/python3
 """Paragon PR7-OS updates.
 
-    pr7os-update            the update window (what's new, UPDATE)
+    pr7os-update            the update window (what's new, UPDATE); with no screen (over SSH) the update itself, in
+                            the terminal (your password, then each step)
+    pr7os-update --back     over SSH: back to the release before (the window's GO BACK)
     pr7os-update --check    the daily check (the systemd timer): a notification when there's something newer
 """
 import os
@@ -16,10 +18,23 @@ VENV_PYTHON = "/opt/paragon/venv/bin/python"          # PySide6 for the window
 WINDOW = "/usr/share/paragon/update/window.py"
 
 
+HELPER = "/usr/libexec/paragon/pr7os-update-helper"
+
+
+def has_screen() -> bool:
+    """A desktop to show the window on (not an SSH session: Qt would abort with no display)."""
+    return bool(os.environ.get("WAYLAND_DISPLAY") or os.environ.get("DISPLAY"))
+
+
+def terminal(back: bool = False) -> int:
+    """The update in the terminal: pkexec asks for the password right there, the helper prints every step."""
+    return subprocess.call(["pkexec", HELPER] + (["previous"] if back else []))
+
+
 def window() -> int:
-    if os.path.exists(VENV_PYTHON) and os.path.exists(WINDOW):
+    if has_screen() and os.path.exists(VENV_PYTHON) and os.path.exists(WINDOW):
         os.execv(VENV_PYTHON, [VENV_PYTHON, WINDOW])
-    return subprocess.call(["pkexec", "/usr/libexec/paragon/pr7os-update-helper"])   # no window: the terminal
+    return terminal()
 
 
 def check() -> int:
@@ -46,4 +61,5 @@ def check() -> int:
 
 
 if __name__ == "__main__":
-    raise SystemExit(check() if "--check" in sys.argv[1:] else window())
+    args = sys.argv[1:]
+    raise SystemExit(check() if "--check" in args else terminal(back=True) if "--back" in args else window())
