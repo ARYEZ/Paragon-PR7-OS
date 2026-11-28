@@ -1,0 +1,57 @@
+#!/usr/bin/python3
+"""Paragon PR7-OS: the PC stays awake while someone is connected over SSH (port 22) or remote desktop (xrdp, 3389).
+
+Plasma puts the PC to sleep after a while without keyboard or mouse at the PC itself; typing in an SSH session or a
+remote desktop doesn't count, so the connection was cut mid-update. Every CHECK seconds this looks for established
+connections to those ports (`ss`); while there are any it holds a systemd inhibitor ("sleep" and "idle": logind and
+Plasma's power management both honour it), and lets go when the last one closes. Runs as pr7os-remote-awake.service.
+PR7OS_SS (tests) replaces the `ss` command; `once()` is one check."""
+import os
+import shlex
+import subprocess
+import time
+
+CHECK = 30
+PORTS = (22, 3389)
+WHY = "Someone is connected to this PC (SSH or remote desktop)"
+
+
+def connected() -> int:
+    """Established TCP connections to SSH or remote desktop on this PC."""
+    ss = shlex.split(os.environ.get("PR7OS_SS", "ss"))
+    filt = " or ".join(f"sport = :{p}" for p in PORTS)
+    try:
+        out = subprocess.run([*ss, "-Htn", "state", "established", f"( {filt} )"], capture_output=True, text=True,
+                             timeout=10).stdout
+    except (OSError, subprocess.SubprocessError):
+        return 0
+    return sum(1 for line in out.splitlines() if line.strip())
+
+
+class Awake:
+    def __init__(self, start=subprocess.Popen):
+        self.start = start
+        self.holder = None
+
+    def once(self) -> bool:
+        """One check: hold the inhibitor while anyone is connected, release it after. True while held."""
+        if connected():
+            if self.holder is None or self.holder.poll() is not None:
+                self.holder = self.start(["systemd-inhibit", "--what=sleep:idle", "--who=Paragon PR7-OS",
+                                          f"--why={WHY}", "--mode=block", "sleep", "infinity"])
+            return True
+        if self.holder is not None:
+            self.holder.terminate()
+            self.holder = None
+        return False
+
+
+def main() -> int:
+    awake = Awake()
+    while True:
+        awake.once()
+        time.sleep(CHECK)
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

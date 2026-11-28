@@ -36,6 +36,7 @@ def welcome(tmp_path, monkeypatch, qapp):
     w.start = lambda command: w.started.append(command)        # recorded, never started
     w.configured = []
     w.configure = lambda args: w.configured.append(args)         # recorded, never run
+    w.nm = lambda args, **k: subprocess.CompletedProcess(args, 0, "", "")   # no network to change
     yield mod, w, tmp_path
     w.close()
 
@@ -179,3 +180,40 @@ def test_press_picks_the_key_on_its_card(welcome):
     assert mod.press(w, "REMOTE DESKTOP/TURN ON") and w.remote == "on" and w.ssh == "off"
     assert mod.press(w, "SSH/TURN ON") and w.ssh == "on"
     assert not mod.press(w, "PRINTERS/TURN ON")
+
+
+class FakeNM:
+    """nmcli as it answers for one Wi-Fi network set up by this account (the password in its wallet)."""
+    def __init__(self, perms="user:aryez", flags="1 (agent-owned)", psk="secret pass"):
+        self.calls, self.perms, self.flags, self.psk = [], perms, flags, psk
+
+    def __call__(self, args, **k):
+        self.calls.append(args)
+        a = [x for x in args[1:] if x != "-s"]                       # -s (show secrets) only reads the password
+        out = ""
+        if a[:2] == ["-t", "-f"]:
+            out = "u-1:802-11-wireless:Home\\:5G\nu-2:loopback:lo\n"
+        elif a[:2] == ["-g", "connection.permissions"]:
+            out = self.perms
+        elif a[:2] == ["-g", "802-11-wireless-security.psk-flags"]:
+            out = self.flags
+        elif a[:2] == ["-g", "802-11-wireless-security.psk"]:
+            out = self.psk
+        return subprocess.CompletedProcess(args, 0, out + "\n", "")
+
+
+def test_turn_on_makes_the_network_the_pcs(welcome, monkeypatch):
+    mod, w, tmp = welcome
+    nm = FakeNM()
+    said = mod.network_for_everyone(nm)
+    assert ["nmcli", "-s", "-g", "802-11-wireless-security.psk", "connection", "show", "u-1"] in nm.calls
+    assert ["nmcli", "connection", "modify", "u-1", "connection.permissions", "",
+            "802-11-wireless-security.psk-flags", "0", "802-11-wireless-security.psk", "secret pass"] in nm.calls
+    assert said == "Home:5G: now the PC's, not only your account's"
+    already = FakeNM(perms="", flags="0 (none)")
+    assert mod.network_for_everyone(already) == ""                   # already the PC's: nothing changed
+    assert not any(c[1:3] == ["connection", "modify"] for c in already.calls)
+    monkeypatch.setattr(mod, "krdp_units", lambda: [])
+    w.nm = FakeNM()
+    w.remote_key.click()                                             # TURN ON does it, and says so
+    assert w.remote == "on" and "Network: Home:5G: now the PC's" in w.remote_text.text()

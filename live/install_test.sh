@@ -70,6 +70,7 @@ command -v startplasma-x11 >/dev/null || fail "Plasma's X11 session (startplasma
 echo "xrdp's session manager: $(readlink -f /etc/alternatives/x-session-manager)"
 echo "remote desktop: xrdp, xorgxrdp, Plasma on X11 installed"
 # Steam's NVIDIA libraries: the service is on at every start (it does nothing here: no NVIDIA driver running)
+[ -L /etc/systemd/system/multi-user.target.wants/pr7os-remote-awake.service ] || fail "pr7os-remote-awake isn't enabled"
 [ -L /etc/systemd/system/multi-user.target.wants/pr7os-remote-desktop-firewall.service ] \
     || fail "pr7os-remote-desktop-firewall isn't enabled"
 systemctl is-enabled pr7os-flatpak-gl.service 2>/dev/null | grep -qx enabled \

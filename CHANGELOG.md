@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.11.1
+
+- **Remote desktop works signed out**: Plasma keeps a network for the account that set it up (the Wi-Fi password in its
+  wallet), so a signed-out PC dropped off the network and Windows couldn't reach it. Welcome's REMOTE DESKTOP TURN ON
+  now makes each active network the PC's (every account, and the login screen): a Wi-Fi password kept in your wallet is
+  stored for the system instead (NetworkManager's own root-only file), and the card says which networks changed.
+- **Awake while you're connected**: pr7os-remote-awake.service keeps the PC from sleeping while anyone is connected over
+  SSH (port 22) or remote desktop (3389), and lets go when the last connection closes. Typing in an SSH session or a
+  remote desktop doesn't count as using the PC, so Plasma put it to sleep mid-session.
+
 ## 0.11.0
 
 A new ISO with remote desktop through xrdp (0.10.1). Its boot test turns REMOTE DESKTOP on from Welcome (Plasma's

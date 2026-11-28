@@ -74,6 +74,10 @@ a live ISO with the Calamares installer. The owner writes Python; explain the wh
   the card's TURN ON first stops KRdp for the account (`krdp_units` found by name, `krdp_off_commands`); one account
   can't run two Plasma sessions, so the card says sign out first. Boot test: TURN ON, then FreeRDP on the runner through
   QEMU's hostfwd 13389 logs in as a test user `rdptest` and kwin_x11 + plasmashell must run for it.
+- **Remote desktop signed out / awake** (0.11.1): TURN ON runs `welcome.network_for_everyone` in the session (nmcli:
+  active Wi-Fi / Ethernet -> connection.permissions "", an agent-owned Wi-Fi psk read with -s and stored with
+  psk-flags 0); `static/system/pr7os-remote-awake` (+ .service, enabled by setup_system) holds `systemd-inhibit
+  --what=sleep:idle` while `ss` shows established connections to 22 / 3389 (PR7OS_SS in tests).
 - **Remote desktop's firewall** (0.6.1): `setup_system.remote_desktop` adds ufw 3389/tcp from
   10/8, 172.16/12, 192.168/16 once (marker /var/lib/paragon/remote-desktop-allowed; never from anywhere), and at
   start-up `pr7os-remote-desktop-firewall.service` until all three are in (a build chroot / container can't: ufw initcaps).

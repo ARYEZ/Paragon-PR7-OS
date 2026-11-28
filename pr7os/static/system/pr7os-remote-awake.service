@@ -1,0 +1,11 @@
+[Unit]
+Description=Paragon PR7-OS: stay awake while someone is connected (SSH or remote desktop)
+After=network.target
+
+[Service]
+ExecStart=/usr/bin/python3 /usr/libexec/paragon/pr7os-remote-awake
+Restart=always
+RestartSec=10
+
+[Install]
+WantedBy=multi-user.target

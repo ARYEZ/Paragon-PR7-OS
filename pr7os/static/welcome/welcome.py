@@ -162,6 +162,40 @@ def remote_state() -> str:
         return "off"
 
 
+def network_for_everyone(run=subprocess.run) -> str:
+    """Remote desktop needs the PC online at the login screen, and Plasma keeps a network for the account that set it
+    up (its Wi-Fi password in that account's wallet): signed out, the PC drops off the network. Each active network
+    becomes everyone's, and a Wi-Fi password kept in the wallet is stored for the system (root-only, NetworkManager's
+    own file). Run in the session: only it can read the wallet. Returns what it did, for the card."""
+    def nm(*args, secrets=False):
+        try:
+            return run(["nmcli", *(["-s"] if secrets else []), *args], capture_output=True, text=True,
+                       timeout=30).stdout.strip()
+        except (OSError, subprocess.SubprocessError):
+            return ""
+    done = []
+    for line in nm("-t", "-f", "UUID,TYPE,NAME", "connection", "show", "--active").splitlines():
+        parts = line.split(":", 2)
+        if len(parts) < 3 or parts[1] not in ("802-11-wireless", "802-3-ethernet"):
+            continue
+        uuid, kind, name = parts[0], parts[1], parts[2].replace("\\:", ":")
+        changes = []
+        if nm("-g", "connection.permissions", "connection", "show", uuid):
+            changes += ["connection.permissions", ""]
+        if kind == "802-11-wireless":
+            flags = nm("-g", "802-11-wireless-security.psk-flags", "connection", "show", uuid)
+            if flags and not flags.startswith("0"):
+                psk = nm("-g", "802-11-wireless-security.psk", "connection", "show", uuid, secrets=True)
+                if psk:
+                    changes += ["802-11-wireless-security.psk-flags", "0", "802-11-wireless-security.psk", psk]
+                else:
+                    done.append(f"{name}: its Wi-Fi password couldn't be read (still only yours)")
+        if changes:
+            nm("connection", "modify", uuid, *changes)
+            done.append(f"{name}: now the PC's, not only your account's")
+    return "; ".join(done)
+
+
 def krdp_off_commands(units: list[str]) -> list[list[str]]:
     """KRdp for this account: its server stopped, and its start-at-login unit(s) off (they hold port 3389, which xrdp
     takes). Unit names differ between Plasma versions, so they're found by name, not assumed."""
@@ -254,6 +288,7 @@ class Window(QWidget):
         self.setWindowTitle("Welcome to PR7-OS")
         self.setStyleSheet(style())
         self.configure = lambda args: subprocess.run(args, capture_output=True)   # tests record instead
+        self.nm = subprocess.run                                     # nmcli (network_for_everyone); tests stand in
         self.setAttribute(Qt.WidgetAttribute.WA_DeleteOnClose)        # PR7-OS's updater window's lesson
         self.resize(720, 640)
         lay = QVBoxLayout(self)
@@ -427,9 +462,11 @@ class Window(QWidget):
     def toggle_remote(self) -> None:
         word = "off" if self.remote == "on" else "on"
         self.remote_key.setEnabled(False)
+        self.network_note = ""
         if word == "on":
             for args in krdp_off_commands(krdp_units()):
                 self.configure(args)
+            self.network_note = network_for_everyone(self.nm)
         self.remote_text.setText("Your password lets PR7-OS change this.")
         self._run(remote_helper(), "PR7OS_REMOTE_HELPER", word, self.remote_text, self._remote_done)
 
@@ -439,6 +476,10 @@ class Window(QWidget):
             self.show_remote("Nothing was changed (no password given).")
             return
         self.remote = remote_state()
+        if code == 0 and self.remote == "on" and getattr(self, "network_note", ""):
+            self.show_remote(remote_view(True, socket.gethostname(), home_address()) + " Network: "
+                             + self.network_note + ".")
+            return
         self.show_remote("" if code == 0 else self.last_line.partition(" ")[2])
 
     def show_drivers(self, note: str = "") -> None:

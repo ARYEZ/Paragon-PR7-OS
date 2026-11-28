@@ -189,7 +189,7 @@ def test_remote_desktop_from_home_networks_only_once(system):
 def test_the_flatpak_nvidia_service_is_switched_on(system):
     mod, root, log = system
     mod.main(["configure"])
-    assert "systemctl enable pr7os-flatpak-gl.service pr7os-remote-desktop-firewall.service" in log.read_text().splitlines()
+    assert "systemctl enable pr7os-flatpak-gl.service pr7os-remote-desktop-firewall.service pr7os-remote-awake.service" in log.read_text().splitlines()
 
 
 def test_at_start_up_the_remote_desktop_rules_are_retried_until_in(system, tmp_path):
@@ -201,3 +201,37 @@ def test_at_start_up_the_remote_desktop_rules_are_retried_until_in(system, tmp_p
     bad.write_text(f'#!/bin/sh\necho "ufw $*" >> "{log}"\n')
     assert mod.main(["remote-desktop"]) == 0                         # the next start: all three, then never again
     assert (root / "var/lib/paragon/remote-desktop-allowed").exists()
+
+
+def test_awake_while_someone_is_connected(tmp_path, monkeypatch):
+    """pr7os-remote-awake: the inhibitor is held while SSH / remote desktop connections exist, released after."""
+    from importlib.machinery import SourceFileLoader
+    loader = SourceFileLoader("remote_awake", str(STATIC / "system/pr7os-remote-awake"))
+    spec = importlib.util.spec_from_loader("remote_awake", loader)
+    mod = importlib.util.module_from_spec(spec)
+    loader.exec_module(mod)
+    conns = tmp_path / "conns"
+    ss = tmp_path / "ss"
+    ss.write_text(f'#!/bin/sh\necho "$*" > {tmp_path}/ss-args\ncat "{conns}"\n')
+    ss.chmod(0o755)
+    monkeypatch.setenv("PR7OS_SS", str(ss))
+
+    class Holder:
+        def __init__(self, args):
+            self.args, self.ended = args, False
+
+        def poll(self):
+            return 0 if self.ended else None
+
+        def terminate(self):
+            self.ended = True
+    started = []
+    awake = mod.Awake(start=lambda args: started.append(Holder(args)) or started[-1])
+    conns.write_text("")
+    assert not awake.once() and started == []                        # nobody connected: the PC may sleep
+    conns.write_text("0 0 10.0.0.17:22 10.0.0.5:51000\n")
+    assert awake.once() and awake.once() and len(started) == 1      # one inhibitor, held while connected
+    assert started[0].args[:3] == ["systemd-inhibit", "--what=sleep:idle", "--who=Paragon PR7-OS"]
+    assert "sport = :22 or sport = :3389" in (tmp_path / "ss-args").read_text()
+    conns.write_text("")
+    assert not awake.once() and started[0].ended                     # the last one left: let go
