@@ -1,0 +1,74 @@
+#!/usr/bin/python3
+"""Paragon PR7-OS: the login screen runs on Wayland (KWin, as KDE recommends for Plasma 6: one input stack with the
+desktop, no X server and no X input driver to go missing, which locked the keyboard out in 0.10.1). If it can't start
+on a PC (a graphics driver KWin can't run the login screen on), the TV would stay dark with only SSH to help. This
+runs after SDDM starts (pr7os-greeter-check.service): if neither a login screen nor a desktop session appears within
+WAIT seconds, it switches the login screen back to X11 once (/etc/sddm.conf.d/90-paragon-x11-fallback.conf, read
+after PR7-OS's Wayland setting, never a file a package owns) and restarts SDDM. The fallback file is also the marker:
+with it there, this does nothing. Delete it to try Wayland again.
+
+PR7OS_ROOT points /etc elsewhere and PATH supplies stand-ins for pgrep / loginctl / systemctl (tests)."""
+import os
+import subprocess
+import sys
+import time
+
+ROOT = os.environ.get("PR7OS_ROOT", "/")
+WAIT = int(os.environ.get("PR7OS_GREETER_WAIT", "90"))
+STEP = float(os.environ.get("PR7OS_GREETER_STEP", "5"))
+FALLBACK = "etc/sddm.conf.d/90-paragon-x11-fallback.conf"
+WAYLAND = "etc/sddm.conf.d/20-paragon-wayland.conf"
+GREETERS = ("sddm-greeter-qt6", "sddm-greeter")
+
+
+def path(rel: str) -> str:
+    return os.path.join(ROOT, rel)
+
+
+def run(args: list[str]) -> str:
+    try:
+        return subprocess.run(args, capture_output=True, text=True, timeout=15).stdout
+    except (OSError, subprocess.SubprocessError):
+        return ""
+
+
+def greeter_up() -> bool:
+    return any(run(["pgrep", "-x", g]).strip() for g in GREETERS)
+
+
+def desktop_up() -> bool:
+    """Someone already signed in at the PC (seat0 has an active session that isn't the login screen's)."""
+    session = run(["loginctl", "show-seat", "seat0", "-p", "ActiveSession", "--value"]).strip()
+    if not session:
+        return False
+    return run(["loginctl", "show-session", session, "-p", "Class", "--value"]).strip() == "user"
+
+
+def main() -> int:
+    if os.path.exists(path(FALLBACK)):
+        print("the login screen already runs on X11 (fallback in place): nothing to check")
+        return 0
+    if not os.path.exists(path(WAYLAND)):
+        print("the login screen isn't set to Wayland: nothing to check")
+        return 0
+    seen = 0
+    for _ in range(max(1, int(WAIT / STEP))):
+        if desktop_up():
+            print("a desktop session is running: the login screen worked")
+            return 0
+        seen = seen + 1 if greeter_up() else 0
+        if seen >= 3:                                   # there for three checks running: it's up and stays up
+            print("the login screen runs on Wayland")
+            return 0
+        time.sleep(STEP)
+    os.makedirs(os.path.dirname(path(FALLBACK)), exist_ok=True)
+    with open(path(FALLBACK), "w", encoding="utf-8") as fh:
+        fh.write("# Paragon PR7-OS: the Wayland login screen didn't start on this PC, so it runs on X11.\n"
+                 "# Delete this file (and restart sddm) to try Wayland again.\n[General]\nDisplayServer=x11\n")
+    print("the Wayland login screen didn't appear: back to X11, restarting the login screen")
+    run(["systemctl", "restart", "sddm"])
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())

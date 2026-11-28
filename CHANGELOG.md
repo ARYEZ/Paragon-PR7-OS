@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.13.2
+
+- **The login screen runs on Wayland** (KWin, as KDE recommends for Plasma 6): the same input stack as the desktop, so
+  no X server and no X input driver behind it to go missing (0.10.1's locked-out keyboard).
+- **A safety net**: pr7os-greeter-check runs after the login screen starts; if neither a login screen nor a desktop
+  session appears within 90 seconds, it switches the login screen back to X11 once (it works there now: 0.12.1's input
+  driver) and restarts it. Delete /etc/sddm.conf.d/90-paragon-x11-fallback.conf to try Wayland again.
+- Takes effect at the next restart.
+
 ## 0.13.1
 
 - No changes for installed PCs (the same packages as 0.12.1). The version moves past 0.13.0 so that later pushes are

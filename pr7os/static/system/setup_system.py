@@ -100,7 +100,8 @@ def flathub() -> str:
     return "added" if done.returncode == 0 else f"not added yet ({done.stderr.strip()[:200]})"
 
 
-SERVICES = ["pr7os-flatpak-gl.service", "pr7os-remote-desktop-firewall.service", "pr7os-remote-awake.service"]
+SERVICES = ["pr7os-flatpak-gl.service", "pr7os-remote-desktop-firewall.service", "pr7os-remote-awake.service",
+            "pr7os-greeter-check.service"]
 
 
 def services() -> str:

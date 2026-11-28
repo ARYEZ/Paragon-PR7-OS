@@ -189,7 +189,7 @@ def test_remote_desktop_from_home_networks_only_once(system):
 def test_the_flatpak_nvidia_service_is_switched_on(system):
     mod, root, log = system
     mod.main(["configure"])
-    assert "systemctl enable pr7os-flatpak-gl.service pr7os-remote-desktop-firewall.service pr7os-remote-awake.service" in log.read_text().splitlines()
+    assert "systemctl enable pr7os-flatpak-gl.service pr7os-remote-desktop-firewall.service pr7os-remote-awake.service pr7os-greeter-check.service" in log.read_text().splitlines()
 
 
 def test_at_start_up_the_remote_desktop_rules_are_retried_until_in(system, tmp_path):
@@ -235,3 +235,53 @@ def test_awake_while_someone_is_connected(tmp_path, monkeypatch):
     assert "sport = :22 or sport = :3389" in (tmp_path / "ss-args").read_text()
     conns.write_text("")
     assert not awake.once() and started[0].ended                     # the last one left: let go
+
+
+@pytest.fixture
+def seat(tmp_path, monkeypatch):
+    """A PC set to the Wayland login screen, with stand-ins for pgrep / loginctl / systemctl."""
+    root, bin_ = tmp_path / "root", tmp_path / "bin"
+    (root / "etc/sddm.conf.d").mkdir(parents=True)
+    (root / "etc/sddm.conf.d/20-paragon-wayland.conf").write_text("[General]\nDisplayServer=wayland\n")
+    bin_.mkdir()
+    log, greeter, session = tmp_path / "log", tmp_path / "greeter", tmp_path / "session"
+    log.write_text("")
+    tools = {"pgrep": f'[ -f "{greeter}" ] && [ "$2" = sddm-greeter-qt6 ] && echo 1234; exit 0',
+             "loginctl": f'case "$1" in show-seat) [ -f "{session}" ] && echo c2;; show-session) cat "{session}";; esac',
+             "systemctl": f'echo "systemctl $*" >> "{log}"'}
+    for name, body in tools.items():
+        f = bin_ / name
+        f.write_text("#!/bin/sh\n" + body + "\n")
+        f.chmod(0o755)
+    monkeypatch.setenv("PATH", f"{bin_}{os.pathsep}{os.environ['PATH']}")
+    monkeypatch.setenv("PR7OS_ROOT", str(root))
+    monkeypatch.setenv("PR7OS_GREETER_WAIT", "3")
+    monkeypatch.setenv("PR7OS_GREETER_STEP", "0.5")
+    from importlib.machinery import SourceFileLoader
+    loader = SourceFileLoader("greeter_check", str(STATIC / "system/pr7os-greeter-check"))
+    spec = importlib.util.spec_from_loader("greeter_check", loader)
+    mod = importlib.util.module_from_spec(spec)
+    loader.exec_module(mod)
+    return mod, root, log, greeter, session
+
+
+def test_wayland_login_screen_up_is_left_alone(seat):
+    mod, root, log, greeter, session = seat
+    greeter.write_text("")
+    assert mod.main() == 0
+    assert not (root / mod.FALLBACK).exists() and log.read_text() == ""
+
+
+def test_a_desktop_already_running_counts(seat):
+    mod, root, log, greeter, session = seat
+    session.write_text("user\n")
+    assert mod.main() == 0 and not (root / mod.FALLBACK).exists()
+
+
+def test_no_login_screen_goes_back_to_x11_once(seat):
+    mod, root, log, greeter, session = seat
+    assert mod.main() == 0                                       # nothing came up
+    conf = (root / mod.FALLBACK).read_text()
+    assert "DisplayServer=x11" in conf and "systemctl restart sddm" in log.read_text()
+    log.write_text("")
+    assert mod.main() == 0 and log.read_text() == ""             # the marker: never again, no restart loop

@@ -572,6 +572,11 @@ def build(root: Path) -> list[Path]:
     out.append(write(root, "etc/sddm.conf.d/10-paragon.conf",
                      "[General]\n# no on-screen keyboard over the password (Debian turns Qt's virtual keyboard on)\n"
                      "InputMethod=\n\n[Theme]\nCurrent=paragon\nCursorTheme=breeze_cursors\nFont=Bebas Neue\n"))
+    # the login screen on Wayland under KWin (KDE's recommended setup for Plasma 6): one input stack with the desktop,
+    # no X server or X input driver for it; pr7os-greeter-check falls back to X11 once if it can't start on a PC
+    out.append(write(root, "etc/sddm.conf.d/20-paragon-wayland.conf",
+                     "[General]\nDisplayServer=wayland\nGreeterEnvironment=QT_WAYLAND_SHELL_INTEGRATION=layer-shell\n\n"
+                     "[Wayland]\nCompositorCommand=kwin_wayland --drm --no-lockscreen --no-global-shortcuts --locale1\n"))
     # boot splash (Plymouth)
     ply = f"{share}/plymouth/themes/paragon"
     for f in ("paragon.plymouth", "paragon.script"):

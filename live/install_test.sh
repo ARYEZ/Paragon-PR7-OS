@@ -69,6 +69,11 @@ done
 command -v startplasma-x11 >/dev/null || fail "Plasma's X11 session (startplasma-x11) isn't there"
 echo "xrdp's session manager: $(readlink -f /etc/alternatives/x-session-manager)"
 echo "remote desktop: xrdp, xorgxrdp, Plasma on X11 installed"
+# the login screen on Wayland under KWin, with the X11 fallback check enabled
+grep -q '^DisplayServer=wayland' /etc/sddm.conf.d/20-paragon-wayland.conf || fail "the login screen isn't set to Wayland"
+command -v kwin_wayland >/dev/null || fail "kwin_wayland (the login screen's compositor) isn't there"
+[ -L /etc/systemd/system/graphical.target.wants/pr7os-greeter-check.service ] || fail "pr7os-greeter-check isn't enabled"
+echo "login screen: Wayland (KWin), fallback check on"
 # Steam's NVIDIA libraries: the service is on at every start (it does nothing here: no NVIDIA driver running)
 [ -L /etc/systemd/system/multi-user.target.wants/pr7os-remote-awake.service ] || fail "pr7os-remote-awake isn't enabled"
 [ -L /etc/systemd/system/multi-user.target.wants/pr7os-remote-desktop-firewall.service ] \

@@ -84,6 +84,11 @@ a live ISO with the Calamares installer. The owner writes Python; explain the wh
 - **Flatpak NVIDIA libraries** (0.6.2): `static/system/pr7os-flatpak-gl` + .service (system package; setup_system
   enables it): /sys/module/{nvidia,nvidia_current}/version -> org.freedesktop.Platform.GL.nvidia-<dashes>; flatpak
   update (Flatpak picks it), else install it by name; stamp /var/lib/paragon/flatpak-gl-nvidia. PR7OS_SYSTEMCTL in tests.
+- **The login screen on Wayland** (0.13.2): `etc/sddm.conf.d/20-paragon-wayland.conf` (assets: DisplayServer=wayland,
+  kwin_wayland --drm --no-lockscreen --no-global-shortcuts --locale1); `static/system/pr7os-greeter-check` (+ .service
+  after sddm, enabled by setup_system): no greeter (3 checks running) or desktop session within 90 s -> writes
+  90-paragon-x11-fallback.conf (DisplayServer=x11; the marker) and restarts sddm, once. xserver-xorg-input-libinput stays
+  a Depends for that fallback and for xrdp.
 - **The lock screen** is Plasma's shell package (org.kde.plasma.desktop/contents/lockscreen), not the global theme,
   and its QML unlocks the session: `pr7os/static/lockscreen.py` (run by hook 0200) only restyles it with anchored edits
   (ParagonClock instead of Breeze's Clock; the password field's / unlock key's backgrounds; UserDelegate's gradient

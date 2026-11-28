@@ -54,6 +54,8 @@ SYSTEM_FILES = {    # the system package's own files -> source in pr7os/static/s
     "usr/lib/systemd/system/pr7os-remote-desktop-firewall.service": "pr7os-remote-desktop-firewall.service",
     "usr/libexec/paragon/pr7os-remote-awake": "pr7os-remote-awake",
     "usr/lib/systemd/system/pr7os-remote-awake.service": "pr7os-remote-awake.service",
+    "usr/libexec/paragon/pr7os-greeter-check": "pr7os-greeter-check",
+    "usr/lib/systemd/system/pr7os-greeter-check.service": "pr7os-greeter-check.service",
     # Paragon Welcome (pr7os/static/welcome): finish, keys, SSH, printers, Steam, updates
     "usr/bin/pr7os-welcome": "../welcome/pr7os-welcome",
     "usr/share/paragon/welcome/welcome.py": "../welcome/welcome.py",
@@ -70,6 +72,7 @@ EXECUTABLE = {"usr/bin/pr7os-update", "usr/libexec/paragon/pr7os-update-helper",
               "usr/bin/pr7os-welcome", "usr/libexec/paragon/pr7os-ssh-helper",
               "usr/libexec/paragon/pr7os-drivers-helper", "usr/libexec/paragon/pr7os-flatpak-gl",
               "usr/libexec/paragon/pr7os-remote-helper", "usr/libexec/paragon/pr7os-remote-awake",
+              "usr/libexec/paragon/pr7os-greeter-check",
               "etc/initramfs-tools/hooks/paragon-plymouth-fonts"}
 
 
