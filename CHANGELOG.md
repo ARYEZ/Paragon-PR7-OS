@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.8.1
+
+0.8.0's packages, without waiting for its ISO (its boot test passed everything but one: see 0.9.0):
+- `plymouth.use-simpledrm` on the kernel line (installed systems' GRUB);
+- pr7os-remote-desktop-firewall.service: remote desktop's three home-network rules at start-up (0.8.0's boot test:
+  all three in, the port from nowhere else).
+
 ## 0.8.0
 
 A new ISO (0.7.0's boot test found two more things, now fixed; everything else it checked passed: SSH from Welcome,

@@ -30,6 +30,15 @@ case "$1" in prereqs) prereqs; exit 0 ;; esac
 grep -qw paragon.asktest /proc/cmdline || exit 0
 command -v plymouth >/dev/null || exit 0
 sleep 3
+# what the splash has at this moment (for the boot test's report)
+{ echo "== ping"; plymouth --ping && echo running || echo "not running"
+  echo "== cmdline"; cat /proc/cmdline
+  echo "== dri"; ls -la /dev/dri 2>&1
+  echo "== themes"; ls -R /usr/share/plymouth/themes 2>&1 | head -n 40
+  echo "== plugins"; ls /usr/lib/*/plymouth /usr/lib/plymouth 2>&1
+  echo "== conf"; cat /etc/plymouth/plymouthd.conf /usr/share/plymouth/plymouthd.defaults 2>&1
+  echo "== fonts"; find / -xdev \( -name '*.ttf' -o -name '*.otf' -o -name fonts.conf \) 2>/dev/null | head -n 20
+} > /run/pr7os-asktest-diag 2>&1
 echo PARAGON-ASKTEST-ASKING > /dev/ttyS0
 mkdir -p /run
 plymouth ask-for-password --prompt="UNLOCK THIS PC'S DISK" > /run/pr7os-asktest

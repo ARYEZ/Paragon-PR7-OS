@@ -328,6 +328,9 @@ def main(iso: str, out_dir: str) -> int:
         back.save(out / "unlocked.png")
         lock_shown = difference(locked, desktop) > 12
         unlocked = difference(back, desktop) < 8
+        (out / "unlock_diag.txt").write_text(m.guest("/bin/sh", ["-c",
+            "cat /run/pr7os-asktest-diag; echo '== the ISO initramfs'; "
+            "lsinitramfs /run/live/medium/live/initrd.img 2>&1 | grep -iE 'plymouth|\\.ttf|fonts.conf|label|script.so' | head -n 80"]))
         answer = m.guest("/bin/cat", ["/run/pr7os-asktest"]).strip()
         passed_on = answer == "pr7os"
         result.append(f"unlock answer: {'passed on' if passed_on else 'NOT PASSED ON (' + answer[:60] + ')'}")
