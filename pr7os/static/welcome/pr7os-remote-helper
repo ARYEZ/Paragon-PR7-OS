@@ -11,6 +11,7 @@ Why xrdp and not Plasma's KRdp: KRdp's H.264 stream was refused by both of Micro
 Connection: protocol error 0xd06; Windows App: "Invalid packet format"), at 4K and at 1080p. The firewall already
 lets port 3389 in from home networks only (PR7-OS's setup). Prints STEP / DONE / ERROR lines for the window."""
 import os
+import re
 import subprocess
 import sys
 
@@ -26,6 +27,17 @@ def say(line: str) -> None:
 def installed(pkg: str) -> bool:
     return subprocess.run(["dpkg-query", "-W", "-f", "${db:Status-Status}", pkg], capture_output=True,
                           text=True).stdout.strip() == "installed"
+
+
+def port_holder() -> str:
+    """The program listening on remote desktop's port, "" if none (or ss isn't there)."""
+    try:
+        out = subprocess.run([os.environ.get("PR7OS_SS", "ss"), "-Hltnp", "sport = :3389"], capture_output=True,
+                             text=True, timeout=10).stdout
+    except (OSError, subprocess.SubprocessError):
+        return ""
+    m = re.search(r'users:\(\("([^"]+)"', out)
+    return m.group(1) if m else ""
 
 
 def state() -> str:
@@ -56,6 +68,10 @@ def main(argv: list[str]) -> int:
         say("STEP Starting it")
         if subprocess.run([SYSTEMCTL, "enable", "--now", "xrdp"]).returncode:
             say("ERROR xrdp didn't start")
+            return 1
+        holder = port_holder()
+        if holder and holder != "xrdp":                  # KRdp started with a desktop takes 3389 and xrdp fails
+            say(f"ERROR port 3389 is held by {holder}, not xrdp: stop it, then TURN ON again")
             return 1
     else:
         say("STEP Stopping it")

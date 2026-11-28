@@ -165,7 +165,11 @@ def test_the_remote_helper(tmp_path):
         tool = tmp_path / name
         tool.write_text(f'#!/bin/sh\necho "{name} $*" >> "{log}"\n[ "$1" = is-active ] && echo inactive\nexit 0\n')
         tool.chmod(0o755)
-    env = dict(os.environ, PR7OS_APT=str(tmp_path / "apt-get"), PR7OS_SYSTEMCTL=str(tmp_path / "systemctl"))
+    ss = tmp_path / "ss"
+    ss.write_text('#!/bin/sh\necho \'LISTEN 0 2 *:3389 *:* users:(("xrdp",pid=900,fd=11))\'\n')
+    ss.chmod(0o755)
+    env = dict(os.environ, PR7OS_APT=str(tmp_path / "apt-get"), PR7OS_SYSTEMCTL=str(tmp_path / "systemctl"),
+               PR7OS_SS=str(ss))
     helper = str(WELCOME / "pr7os-remote-helper")
     on = subprocess.run([sys.executable, helper, "on"], env=env, capture_output=True, text=True)
     assert on.returncode == 0 and on.stdout.splitlines()[-1] == "DONE on"
@@ -217,3 +221,30 @@ def test_turn_on_makes_the_network_the_pcs(welcome, monkeypatch):
     w.nm = FakeNM()
     w.remote_key.click()                                             # TURN ON does it, and says so
     assert w.remote == "on" and "Network: Home:5G: now the PC's" in w.remote_text.text()
+
+
+def test_the_remote_helper_says_when_krdp_holds_the_port(tmp_path):
+    """After a restart KRdp, started with the desktop, held 3389 and xrdp failed: TURN ON says so, by name."""
+    for name in ("apt-get", "systemctl"):
+        tool = tmp_path / name
+        tool.write_text("#!/bin/sh\nexit 0\n")
+        tool.chmod(0o755)
+    ss = tmp_path / "ss"
+    ss.write_text('#!/bin/sh\necho \'LISTEN 0 2 *:3389 *:* users:(("krdpserver",pid=1327,fd=9))\'\n')
+    ss.chmod(0o755)
+    env = dict(os.environ, PR7OS_APT=str(tmp_path / "apt-get"), PR7OS_SYSTEMCTL=str(tmp_path / "systemctl"),
+               PR7OS_SS=str(ss))
+    on = subprocess.run([sys.executable, str(WELCOME / "pr7os-remote-helper"), "on"], env=env, capture_output=True,
+                        text=True)
+    assert on.returncode == 1 and "held by krdpserver" in on.stdout.splitlines()[-1]
+
+
+def test_turn_on_removes_krdps_autostart_entries(welcome, monkeypatch):
+    mod, w, tmp = welcome
+    auto = tmp / "config/autostart"
+    auto.mkdir(parents=True)
+    (auto / "org.kde.krdpserver.desktop").write_text("[Desktop Entry]\n")
+    (auto / "other.desktop").write_text("[Desktop Entry]\n")
+    cmds = mod.krdp_off_commands([])
+    assert ["rm", "-f", str(auto / "org.kde.krdpserver.desktop")] in cmds
+    assert not any("other.desktop" in " ".join(c) for c in cmds)

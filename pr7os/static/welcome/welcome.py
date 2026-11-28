@@ -200,6 +200,12 @@ def krdp_off_commands(units: list[str]) -> list[list[str]]:
     """KRdp for this account: its server stopped, and its start-at-login unit(s) off (they hold port 3389, which xrdp
     takes). Unit names differ between Plasma versions, so they're found by name, not assumed."""
     out = [["systemctl", "--user", "disable", "--now", u] for u in units]
+    autostart = os.path.join(config_home(), "autostart")
+    try:                                         # Plasma can also start it from a desktop file at sign-in
+        entries = [os.path.join(autostart, f) for f in sorted(os.listdir(autostart)) if "krdp" in f.lower()]
+    except OSError:
+        entries = []
+    out += [["rm", "-f", e] for e in entries]
     return out + [["pkill", "-u", str(os.getuid()), "-x", "krdpserver"]]
 
 

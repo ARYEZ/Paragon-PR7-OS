@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.13.3
+
+- **KRdp can't take remote desktop's port back**: after a restart, KRdp (Plasma's own remote desktop, which Windows
+  can't use) started again with the desktop from its start-at-login entry, held port 3389, and xrdp failed: Windows
+  then got KRdp's "authentication error". TURN ON now also removes KRdp's start-at-login entries in your autostart
+  folder, and turning xrdp on checks who listens on 3389: if it's not xrdp, the card says which program it is.
+
 ## 0.13.2
 
 - **The login screen runs on Wayland** (KWin, as KDE recommends for Plasma 6): the same input stack as the desktop, so
