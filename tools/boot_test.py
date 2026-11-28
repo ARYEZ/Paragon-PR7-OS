@@ -307,9 +307,34 @@ def main(iso: str, out_dir: str) -> int:
         img.save(out / "login.png")
         login_ok = brightness(img) > 20
         result.append(f"login screen: {'shown' if login_ok else 'NOT SHOWN'}")
-        m.keys("live")
-        m.key("ret")
-        time.sleep(150)
+        # the password, then SDDM's word for it (its journal); a key press lost on the way gets one more try
+        def logged_in() -> bool:
+            """SDDM said LoginSucceeded, or logind has a session for the live user."""
+            def count(cmd: str) -> int:
+                out = m.guest("/bin/sh", ["-c", cmd]).strip()
+                return int(out) if out.isdigit() else 0
+            return count("journalctl -b --no-pager -o cat -t sddm-greeter-qt6 | grep -c LoginSucceeded") > 0 \
+                or count("loginctl list-sessions --no-legend | grep -c ' paragon '") > 0
+        login_tries = 0
+        for login_tries in (1, 2):
+            m.key("shift")
+            time.sleep(2)
+            m.keys("live")
+            m.key("ret")
+            for _ in range(12):
+                time.sleep(5)
+                if logged_in():
+                    break
+            else:
+                m.key("esc")
+                continue
+            break
+        if not logged_in():
+            (out / "login_failed.txt").write_text(m.guest("/bin/sh", ["-c",
+                "journalctl -b --no-pager -o cat -t sddm -t sddm-helper -t sddm-greeter-qt6 | tail -n 60; "
+                "echo '== Xorg'; tail -n 80 /var/log/Xorg.0.log 2>&1"]))
+        result.append(f"login: {'in' if logged_in() else 'NOT IN'} (attempt {login_tries})")
+        time.sleep(90)
         img = m.shot()
         frames.append((m.elapsed(), "LOGIN", img))
         img.save(out / "desktop_after_login.png")

@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.12.0
+
+A new ISO with remote desktop through xrdp, the network made the PC's on TURN ON, and awake while connected (0.10.1,
+0.11.1). 0.11.0's boot test proved remote desktop (TURN ON from Welcome, then a real RDP client logged in as a user of
+its own and got a Plasma session), but the live user's own login never happened: the password typed at the login
+screen didn't reach it (no attempt in SDDM's log), as if the key presses were lost. The test now checks the login took
+(SDDM's LoginSucceeded or a logind session), tries once more if it didn't, and keeps SDDM's and the X server's logs.
+
 ## 0.11.1
 
 - **Remote desktop works signed out**: Plasma keeps a network for the account that set it up (the Wi-Fi password in its
