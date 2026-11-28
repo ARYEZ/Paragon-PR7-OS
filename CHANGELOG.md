@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.12.1
+
+- **The login screen's keyboard and mouse**: the login screen (SDDM) runs on an X server, and that server had no input
+  driver ("No input driver specified, ignoring this device" for the keyboard, the mouse and the tablet): the login
+  screen ignored them, so nobody could sign in at the PC itself. 0.12.0's boot test found it (its saved X server log).
+  The system package now depends on xserver-xorg-input-libinput, and the ISO carries it.
+
 ## 0.12.0
 
 A new ISO with remote desktop through xrdp, the network made the PC's on TURN ON, and awake while connected (0.10.1,

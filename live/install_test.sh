@@ -63,7 +63,7 @@ else
 fi
 # Remote desktop through xrdp: the server, its X server and Plasma's X11 session (xrdp's sessions are X11), and the
 # session xrdp starts (Debian's Xsession runs x-session-manager)
-for pkg in xrdp xorgxrdp kwin-x11; do
+for pkg in xrdp xorgxrdp kwin-x11 xserver-xorg-input-libinput; do
     dpkg-query -W -f '${db:Status-Status}' "$pkg" | grep -qx installed || fail "$pkg isn't installed"
 done
 command -v startplasma-x11 >/dev/null || fail "Plasma's X11 session (startplasma-x11) isn't there"

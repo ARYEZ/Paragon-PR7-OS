@@ -11,6 +11,8 @@ kde-config-gtk-style
 breeze-gtk-theme
 xdg-desktop-portal-kde
 sddm
+# the login screen's X server: without an input driver it ignores the keyboard and mouse
+xserver-xorg-input-libinput
 pipewire-audio
 wireplumber
 network-manager
