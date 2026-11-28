@@ -1,0 +1,99 @@
+== ping
+running
+== cmdline
+boot=live components quiet splash loglevel=3 plymouth.use-simpledrm username=paragon user-fullname=Paragon hostname=pr7os locales=en_US.UTF-8 keyboard-layouts=us live-config.noautologin console=ttyS0,115200 console=tty0 paragon.asktest plymouth.ignore-serial-consoles initrd=initrd
+== dri
+total 0
+drwxr-xr-x    2 root     0               60 Nov 28 06:27 .
+drwxr-xr-x   12 root     0             2380 Nov 28 06:27 ..
+crw-------    1 root     0         226,   0 Nov 28 06:27 card0
+== themes
+/usr/share/plymouth/themes:
+details
+paragon
+text
+
+/usr/share/plymouth/themes/details:
+details.plymouth
+
+/usr/share/plymouth/themes/paragon:
+fill.png
+footer.png
+mark.png
+paragon.plymouth
+paragon.script
+track.png
+word.png
+
+/usr/share/plymouth/themes/text:
+text.plymouth
+== plugins
+ls: /usr/lib/plymouth: No such file or directory
+/usr/lib/x86_64-linux-gnu/plymouth:
+details.so
+label-pango.so
+renderers
+script.so
+text.so
+== conf
+# Administrator customizations go in this file
+#[Daemon]
+#Theme=ceratopsian
+#ShowDelay=0
+[Daemon]
+Theme=paragon
+# Distribution defaults. Changes to this file will get overwritten during
+# upgrades.
+[Daemon]
+Theme=ceratopsian
+ShowDelay=0
+DeviceTimeout=8
+== fonts
+/etc/fonts/fonts.conf
+/usr/share/fonts/truetype/paragon-inter/BebasNeue-Regular.ttf
+/usr/share/fonts/truetype/noto/NotoSans-Regular.ttf
+/usr/share/fonts/truetype/dejavu/DejaVuSansMono.ttf
+/usr/share/fonts/Plymouth.ttf
+/usr/share/fonts/Plymouth-monospace.ttf
+== the ISO initramfs
+etc/fonts/conf.d
+etc/fonts/conf.d/60-latin.conf
+etc/fonts/fonts.conf
+etc/plymouth
+etc/plymouth/plymouthd.conf
+scripts/init-bottom/plymouth
+scripts/init-premount/plymouth
+scripts/panic/plymouth
+usr/bin/plymouth
+usr/lib/x86_64-linux-gnu/plymouth
+usr/lib/x86_64-linux-gnu/plymouth/details.so
+usr/lib/x86_64-linux-gnu/plymouth/label-pango.so
+usr/lib/x86_64-linux-gnu/plymouth/renderers
+usr/lib/x86_64-linux-gnu/plymouth/renderers/drm.so
+usr/lib/x86_64-linux-gnu/plymouth/renderers/frame-buffer.so
+usr/lib/x86_64-linux-gnu/plymouth/script.so
+usr/lib/x86_64-linux-gnu/plymouth/text.so
+usr/libexec/plymouth
+usr/libexec/plymouth/plymouthd-fd-escrow
+usr/sbin/plymouthd
+usr/share/fonts/Plymouth-monospace.ttf
+usr/share/fonts/Plymouth.ttf
+usr/share/fonts/truetype/dejavu/DejaVuSansMono.ttf
+usr/share/fonts/truetype/noto/NotoSans-Regular.ttf
+usr/share/fonts/truetype/paragon-inter/BebasNeue-Regular.ttf
+usr/share/plymouth
+usr/share/plymouth/debian-logo.png
+usr/share/plymouth/plymouthd.defaults
+usr/share/plymouth/themes
+usr/share/plymouth/themes/details
+usr/share/plymouth/themes/details/details.plymouth
+usr/share/plymouth/themes/paragon
+usr/share/plymouth/themes/paragon/fill.png
+usr/share/plymouth/themes/paragon/footer.png
+usr/share/plymouth/themes/paragon/mark.png
+usr/share/plymouth/themes/paragon/paragon.plymouth
+usr/share/plymouth/themes/paragon/paragon.script
+usr/share/plymouth/themes/paragon/track.png
+usr/share/plymouth/themes/paragon/word.png
+usr/share/plymouth/themes/text
+usr/share/plymouth/themes/text/text.plymouth

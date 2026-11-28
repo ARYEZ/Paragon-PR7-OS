@@ -1,0 +1,29 @@
+Status: active
+Logging: on (low)
+Default: deny (incoming), allow (outgoing), disabled (routed)
+New profiles: skip
+
+To                         Action      From
+--                         ------      ----
+22/tcp                     ALLOW IN    Anywhere                   # SSH
+1714:1764/tcp              ALLOW IN    Anywhere                   # KDE Connect
+1714:1764/udp              ALLOW IN    Anywhere                   # KDE Connect
+3389/tcp                   ALLOW IN    10.0.0.0/8                 # Remote desktop (home)
+3389/tcp                   ALLOW IN    172.16.0.0/12              # Remote desktop (home)
+3389/tcp                   ALLOW IN    192.168.0.0/16             # Remote desktop (home)
+22/tcp (v6)                ALLOW IN    Anywhere (v6)              # SSH
+1714:1764/tcp (v6)         ALLOW IN    Anywhere (v6)              # KDE Connect
+1714:1764/udp (v6)         ALLOW IN    Anywhere (v6)              # KDE Connect
+
+@@PR7@@
+flathub
+@@PR7@@
+active
+active
+@@PR7@@
+lrwxrwxrwx 1 paragon paragon 27 Nov 28 06:27 /home/paragon/.face -> /usr/share/paragon/face.png
+lrwxrwxrwx 1 paragon paragon 27 Nov 28 06:27 /home/paragon/.face.icon -> /usr/share/paragon/face.png
+total 0
+drwxrwxr-x 1 root root 40 Aug  8  2024 .
+drwxrwxr-x 1 root root 80 Nov 28 06:10 ..
+cat: '/var/lib/AccountsService/users/*': No such file or directory

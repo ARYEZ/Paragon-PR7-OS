@@ -1,0 +1,19 @@
+boot menu at 9 s
+splash at 21 s
+desktop: shown (brightness 28)
+unlock question: asked; themed dots (reported, not required): NOT SHOWN
+login screen: shown
+login: in (attempt 1)
+unlock answer: passed on
+PR7-OS packages: all five
+firewall: on; Flathub: listed; avahi: running
+PR7-Q: running; Print: answered
+PR7-LN: running; Alt+Space: opened it; PR7-IS service: running
+apps: 22 of 22 started
+Welcome FONT: Inter for the account and the apps
+Welcome BACKUPS: PR7-BK opened the home backup
+Welcome SSH: on (password asked, server running)
+Welcome REMOTE DESKTOP: xrdp on, port 3389 home networks only, an RDP client's login got a Plasma session
+Welcome DRIVERS: card found
+sleep: DID NOT SLEEP, DID NOT WAKE; after waking: lock screen NOT SHOWN, Print answered, PR7-IS running, apps start
+lock screen: shown; unlocked: yes

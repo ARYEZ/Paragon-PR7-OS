@@ -1,0 +1,226 @@
+total 55
+drwxr-xr-x  2 root root   323 Nov 28 06:10 .
+drwxr-xr-x 10 root root   207 Nov 28 06:10 ..
+-rw-r--r--  1 root root  1457 Jul  8  2025 config.qml
+-rw-r--r--  1 root root   653 Jul  8  2025 config.xml
+-rw-r--r--  1 root root  1718 Jul  8  2025 LockOsd.qml
+-rw-r--r--  1 root root   916 Jul  8  2025 LockScreen.qml
+-rw-r--r--  1 root root 13933 Nov 28 06:10 LockScreenUi.qml
+-rw-r--r--  1 root root 13926 Jul 18  2025 LockScreenUi.qml.paragon-orig
+-rw-r--r--  1 root root  7311 Nov 28 06:10 MainBlock.qml
+-rw-r--r--  1 root root  6006 Jul 18  2025 MainBlock.qml.paragon-orig
+-rw-r--r--  1 root root  4507 Jul  8  2025 MediaControls.qml
+-rw-r--r--  1 root root   635 Jul 18  2025 NoPasswordUnlock.qml
+-rw-r--r--  1 root root  1020 Nov 28 06:07 ParagonClock.qml
+-rw-r--r--  1 root root   197 Jul 18  2025 PasswordSync.qml
+-rw-r--r--  1 root root   154 Jul 18  2025 qmldir
+diversion of /usr/share/plasma/shells/org.kde.plasma.desktop/contents/lockscreen/LockScreenUi.qml to /usr/share/plasma/shells/org.kde.plasma.desktop/contents/lockscreen/LockScreenUi.qml.paragon-orig by paragon
+diversion of /etc/skel/.face to /etc/paragon/skel-orig/.face by paragon
+diversion of /etc/skel/.face.icon to /etc/paragon/skel-orig/.face.icon by paragon
+diversion of /usr/share/kglobalaccel/org.kde.spectacle.desktop to /usr/share/kglobalaccel/org.kde.spectacle.desktop.paragon-off by paragon
+diversion of /usr/lib/x86_64-linux-gnu/qt6/qml/org/kde/breeze/components/UserDelegate.qml to /usr/lib/x86_64-linux-gnu/qt6/qml/org/kde/breeze/components/UserDelegate.qml.paragon-orig by paragon
+diversion of /usr/share/kglobalaccel/org.kde.krunner.desktop to /usr/share/kglobalaccel/org.kde.krunner.desktop.paragon-orig by paragon
+diversion of /usr/lib/os-release to /usr/lib/os-release.debian by paragon
+diversion of /usr/share/plasma/shells/org.kde.plasma.desktop/contents/lockscreen/MainBlock.qml to /usr/share/plasma/shells/org.kde.plasma.desktop/contents/lockscreen/MainBlock.qml.paragon-orig by paragon
+/*
+    SPDX-FileCopyrightText: 2016 David Edmundson <davidedmundson@kde.org>
+
+    SPDX-License-Identifier: LGPL-2.0-or-later
+*/
+
+import QtQuick 2.15
+
+import QtQuick.Layouts 1.1
+import QtQuick.Controls 2.12 as QQC2
+
+import org.kde.plasma.components 3.0 as PlasmaComponents3
+import org.kde.plasma.extras 2.0 as PlasmaExtras
+import org.kde.kirigami 2.20 as Kirigami
+import org.kde.kscreenlocker 1.0 as ScreenLocker
+
+import org.kde.breeze.components
+
+SessionManagementScreen {
+    id: sessionManager
+
+    readonly property alias mainPasswordBox: passwordBox
+    property bool lockScreenUiVisible: false
+    property alias showPassword: passwordBox.showPassword
+
+    //the y position that should be ensured visible when the on screen keyboard is visible
+    property int visibleBoundary: mapFromItem(loginButton, 0, 0).y
+    onHeightChanged: visibleBoundary = mapFromItem(loginButton, 0, 0).y + loginButton.height + Kirigami.Units.smallSpacing
+    /*
+     * Login has been requested with the following username and password
+     * If username field is visible, it will be taken from that, otherwise from the "name" property of the currentIndex
+     */
+    signal passwordResult(string password)
+
+    onUserSelected: {
+        const nextControl = (passwordBox.visible ? passwordBox : loginButton);
+        // Don't startLogin() here, because the signal is connected to the
+        // Escape key as well, for which it wouldn't make sense to trigger
+        // login. Using TabFocusReason, so that the loginButton gets the
+        // visual highlight.
+        nextControl.forceActiveFocus(Qt.TabFocusReason);
+    }
+
+    function startLogin() {
+        const password = passwordBox.text
+
+        // This is partly because it looks nicer, but more importantly it
+        // works round a Qt bug that can trigger if the app is closed with a
+        // TextField focused.
+        //
+        // See https://bugreports.qt.io/browse/QTBUG-55460
+        loginButton.forceActiveFocus();
+        passwordResult(password);
+    }
+
+    RowLayout {
+        Layout.fillWidth: true
+
+        PlasmaExtras.PasswordField {
+            id: passwordBox
+            // Paragon: the login screen's field (dark, rounded, the family gradient under it)
+            color: "#E8E8EA"
+            leftPadding: 18
+            background: Rectangle {
+                implicitHeight: 48
+                radius: 12
+                color: "#E60C0A0D"
+                border.color: passwordBox.activeFocus ? "#5A4048" : "#3A3238"
+                border.width: 1
+                Rectangle {
+                    anchors.bottom: parent.bottom
+                    anchors.horizontalCenter: parent.horizontalCenter
+                    width: parent.width - 24
+                    height: 2
+                    gradient: Gradient { orientation: Gradient.Horizontal; GradientStop { position: 0.0; color: "#FF0743" } GradientStop { position: 0.5; color: "#FA3632" } GradientStop { position: 1.0; color: "#F2781E" } }
+                }
+            }
+            font.pointSize: Kirigami.Theme.defaultFont.pointSize + 1
+            Layout.fillWidth: true
+            text: PasswordSync.password
+
+            placeholderText: i18nd("plasma_shell_org.kde.plasma.desktop", "Password")
+            focus: true
+            enabled: !authenticator.graceLocked
+
+            // In Qt this is implicitly active based on focus rather than visibility
+            // in any other application having a focussed invisible object would be weird
+            // but here we are using to wake out of screensaver mode
+            // We need to explicitly disable cursor flashing to avoid unnecessary renders
+            cursorVisible: visible
+
+            onAccepted: {
+                if (lockScreenUiVisible) {
+                    startLogin();
+                }
+            }
+
+            //if empty and left or right is pressed change selection in user switch
+            //this cannot be in keys.onLeftPressed as then it doesn't reach the password box
+            Keys.onPressed: event => {
+                if (event.key === Qt.Key_Left && !text) {
+                    userList.decrementCurrentIndex();
+                    event.accepted = true
+                }
+                if (event.key === Qt.Key_Right && !text) {
+                    userList.incrementCurrentIndex();
+                    event.accepted = true
+                }
+            }
+
+            Connections {
+                target: root
+                function onClearPassword() {
+                    passwordBox.forceActiveFocus()
+                    passwordBox.text = "";
+                    passwordBox.text = Qt.binding(() => PasswordSync.password);
+                }
+                function onNotificationRepeated() {
+                    sessionManager.playHighlightAnimation();
+                }
+            }
+        }
+        Binding {
+            target: PasswordSync
+            property: "password"
+            value: passwordBox.text
+        }
+
+        PlasmaComponents3.Button {
+            id: loginButton
+            // Paragon: the family gradient key
+            icon.color: "#FFFFFF"
+            background: Rectangle {
+                radius: 9
+                opacity: loginButton.down ? 0.8 : 1
+                gradient: Gradient { orientation: Gradient.Horizontal; GradientStop { position: 0.0; color: "#FF0743" } GradientStop { position: 0.5; color: "#FA3632" } GradientStop { position: 1.0; color: "#F2781E" } }
+            }
+            Accessible.name: i18nd("plasma_shell_org.kde.plasma.desktop", "Unlock")
+            Layout.preferredHeight: passwordBox.implicitHeight
+            Layout.preferredWidth: loginButton.Layout.preferredHeight
+
+            icon.name: LayoutMirroring.enabled ? "go-previous" : "go-next"
+
+            onClicked: startLogin()
+            Keys.onEnterPressed: clicked()
+            Keys.onReturnPressed: clicked()
+        }
+    }
+
+    component FailableLabel : PlasmaComponents3.Label {
+        id: _failableLabel
+        required property int kind
+        required property string label
+
+        visible: authenticator.authenticatorTypes & kind
+        text: label
+        textFormat: Text.PlainText
+        horizontalAlignment: Text.AlignHCenter
+        Layout.fillWidth: true
+
+        RejectPasswordAnimation {
+            id: _rejectAnimation
+            target: _failableLabel
+            onFinished: _timer.restart()
+        }
+
+        Connections {
+            target: authenticator
+            function onNoninteractiveError(kind, authenticator) {
+                if (kind & _failableLabel.kind) {
+                    _failableLabel.text = Qt.binding(() => authenticator.errorMessage)
+                    _rejectAnimation.start()
+                }
+            }
+        }
+        Timer {
+            id: _timer
+            interval: Kirigami.Units.humanMoment
+            onTriggered: {
+                _failableLabel.text = Qt.binding(() => _failableLabel.label)
+            }
+        }
+    }
+
+    FailableLabel {
+        kind: ScreenLocker.Authenticator.Fingerprint
+        label: i18nd("plasma_shell_org.kde.plasma.desktop", "(or scan your fingerprint on the reader)")
+    }
+    FailableLabel {
+        kind: ScreenLocker.Authenticator.Smartcard
+        label: i18nd("plasma_shell_org.kde.plasma.desktop", "(or scan your smartcard)")
+    }
+}
+/usr/lib/x86_64-linux-gnu/qt6/qml/org/kde/breeze/components/UserDelegate.qml
+/usr/lib/x86_64-linux-gnu/qt6/qml/org/kde/breeze/components/UserDelegate.qml.paragon-orig
+cat: /home/paragon/.config/kscreenlockerrc: No such file or directory
+[Greeter]
+WallpaperPlugin=org.kde.image
+
+[Greeter][Wallpaper][org.kde.image][General]
+Image=file:///usr/share/wallpapers/Paragon/
+PreviewImage=file:///usr/share/wallpapers/Paragon/

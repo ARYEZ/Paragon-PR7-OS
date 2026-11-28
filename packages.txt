@@ -1,0 +1,5 @@
+paragon-pr7os-apps 0.13.0
+paragon-pr7os-look 0.13.0
+paragon-pr7os-python 1+d5eff036c18d
+paragon-pr7os-system 0.13.0
+paragon-pr7os-updates 0.13.0

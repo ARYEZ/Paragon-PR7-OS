@@ -1,0 +1,1 @@
+{"gpus": [{"class": "0300", "vendor": "1234", "device": "1111", "driver": "bochs-drm", "name": "Device"}], "nvidia": false, "in_use": false, "installed": false, "secure_boot": false, "key_waiting": false}
