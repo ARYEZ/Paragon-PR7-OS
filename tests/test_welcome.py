@@ -22,11 +22,20 @@ def welcome(tmp_path, monkeypatch, qapp):
                       f'echo "STEP Starting it"\necho "$1" > "{state}"\necho "DONE $1"\n')
     helper.chmod(0o755)
     monkeypatch.setenv("PR7OS_SSH_HELPER", str(helper))
+    rstate = tmp_path / "remote-state"
+    rstate.write_text("off")
+    rhelper = tmp_path / "remote-helper"
+    rhelper.write_text(f'#!/bin/sh\nif [ "$1" = state ]; then cat "{rstate}"; exit 0; fi\n'
+                       f'echo "STEP Starting it"\necho "$1" > "{rstate}"\necho "DONE $1"\n')
+    rhelper.chmod(0o755)
+    monkeypatch.setenv("PR7OS_REMOTE_HELPER", str(rhelper))
     spec = importlib.util.spec_from_file_location("welcome", WELCOME / "welcome.py")
     mod = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(mod)
     w = mod.Window(sync=True)
     w.start = lambda command: w.started.append(command)        # recorded, never started
+    w.configured = []
+    w.configure = lambda args: w.configured.append(args)         # recorded, never run
     yield mod, w, tmp_path
     w.close()
 
@@ -43,10 +52,10 @@ def test_the_keys_start_what_they_say(welcome):
     mod, w, tmp = welcome
     from PySide6.QtWidgets import QPushButton
     keys = {b.text(): b for b in w.findChildren(QPushButton)}
-    for text in ("SET UP", "ADD A PRINTER", "GET STEAM", "BACK UP TO A DRIVE", "CHECK FOR UPDATES"):
+    for text in ("ADD A PRINTER", "GET STEAM", "BACK UP TO A DRIVE", "CHECK FOR UPDATES"):
         keys[text].click()
-    assert w.started == [["systemsettings", "kcm_krdpserver"], ["systemsettings", "kcm_printer_manager"],
-                         ["pr7os-steam"], ["pr7-bk", "--new-home-backup"], ["pr7os-update"]]
+    assert w.started == [["systemsettings", "kcm_printer_manager"], ["pr7os-steam"],
+                         ["pr7-bk", "--new-home-backup"], ["pr7os-update"]]
 
 
 def test_ssh_on_and_off(welcome):
@@ -129,9 +138,44 @@ def test_press_clicks_a_key_like_a_mouse(welcome):
     assert not mod.press(w, "NO SUCH KEY")
 
 
-def test_remote_desktop_words(welcome):
+def test_remote_desktop_on_and_off(welcome, monkeypatch):
+    """TURN ON: KRdp stopped for this account first (it holds port 3389), then xrdp through the helper; the card says
+    where to connect and to sign out here first."""
     mod, w, tmp = welcome
-    assert mod.remote_view(False, "pr7os", "192.168.1.20").startswith("Off: SET UP")
-    on = mod.remote_view(True, "pr7os", "192.168.1.20")
-    assert "computer pr7os.local (or 192.168.1.20)" in on
-    assert "(or" not in mod.remote_view(True, "pr7os", "127.0.0.1")          # offline: only the name
+    monkeypatch.setattr(mod, "krdp_units", lambda: ["plasma-krdp_server.service"])
+    assert w.remote == "off" and w.remote_key.text() == "TURN ON"
+    w.remote_key.click()
+    assert (tmp / "remote-state").read_text().strip() == "on" and w.remote == "on"
+    assert w.configured[0] == ["systemctl", "--user", "disable", "--now", "plasma-krdp_server.service"]
+    assert w.configured[1][:2] == ["pkill", "-u"] and w.configured[1][-1] == "krdpserver"
+    assert w.remote_key.text() == "TURN OFF" and "Sign out here first" in w.remote_text.text()
+    w.configured.clear()
+    w.remote_key.click()
+    assert w.remote == "off" and w.remote_key.text() == "TURN ON" and w.configured == []   # turning off leaves KRdp be
+    on = mod.remote_view(True, "outpost", "10.0.0.17")
+    assert "computer 10.0.0.17" in on
+    assert "computer outpost.local" in mod.remote_view(True, "outpost", "127.0.0.1")      # offline: the name
+
+
+def test_the_remote_helper(tmp_path):
+    """The real helper with apt-get / systemctl stand-ins: xrdp started and enabled; one word only."""
+    log = tmp_path / "calls"
+    for name in ("apt-get", "systemctl"):
+        tool = tmp_path / name
+        tool.write_text(f'#!/bin/sh\necho "{name} $*" >> "{log}"\n[ "$1" = is-active ] && echo inactive\nexit 0\n')
+        tool.chmod(0o755)
+    env = dict(os.environ, PR7OS_APT=str(tmp_path / "apt-get"), PR7OS_SYSTEMCTL=str(tmp_path / "systemctl"))
+    helper = str(WELCOME / "pr7os-remote-helper")
+    on = subprocess.run([sys.executable, helper, "on"], env=env, capture_output=True, text=True)
+    assert on.returncode == 0 and on.stdout.splitlines()[-1] == "DONE on"
+    assert "systemctl enable --now xrdp" in log.read_text()
+    assert subprocess.run([sys.executable, helper, "off"], env=env, capture_output=True, text=True).returncode == 0
+    assert "systemctl disable --now xrdp" in log.read_text()
+    assert subprocess.run([sys.executable, helper, "on", "--x"], env=env, capture_output=True, text=True).returncode == 2
+
+
+def test_press_picks_the_key_on_its_card(welcome):
+    mod, w, tmp = welcome
+    assert mod.press(w, "REMOTE DESKTOP/TURN ON") and w.remote == "on" and w.ssh == "off"
+    assert mod.press(w, "SSH/TURN ON") and w.ssh == "on"
+    assert not mod.press(w, "PRINTERS/TURN ON")

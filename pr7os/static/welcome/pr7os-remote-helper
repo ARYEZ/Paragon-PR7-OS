@@ -1,0 +1,68 @@
+#!/usr/bin/python3
+"""Remote desktop from Windows through xrdp (as root, started by pkexec from Paragon Welcome). One word only:
+
+    pr7os-remote-helper on      xrdp (and its X server, xorgxrdp) installed if missing, then started now and at
+                                every boot: Windows' Remote Desktop Connection logs in with your PR7-OS user name and
+                                password and gets a Plasma session of its own (X11)
+    pr7os-remote-helper off     stopped, and not started at boot (the packages stay)
+    pr7os-remote-helper state   "on" or "off" (no root needed)
+
+Why xrdp and not Plasma's KRdp: KRdp's H.264 stream was refused by both of Microsoft's clients (Remote Desktop
+Connection: protocol error 0xd06; Windows App: "Invalid packet format"), at 4K and at 1080p. The firewall already
+lets port 3389 in from home networks only (PR7-OS's setup). Prints STEP / DONE / ERROR lines for the window."""
+import os
+import subprocess
+import sys
+
+APT = os.environ.get("PR7OS_APT", "apt-get")
+SYSTEMCTL = os.environ.get("PR7OS_SYSTEMCTL", "systemctl")
+PACKAGES = ["xrdp", "xorgxrdp"]
+
+
+def say(line: str) -> None:
+    print(line, flush=True)
+
+
+def installed(pkg: str) -> bool:
+    return subprocess.run(["dpkg-query", "-W", "-f", "${db:Status-Status}", pkg], capture_output=True,
+                          text=True).stdout.strip() == "installed"
+
+
+def state() -> str:
+    done = subprocess.run([SYSTEMCTL, "is-active", "xrdp"], capture_output=True, text=True)
+    return "on" if done.stdout.strip() == "active" else "off"
+
+
+def main(argv: list[str]) -> int:
+    word = argv[0] if len(argv) == 1 else ""
+    if word == "state":
+        say(state())
+        return 0
+    if word not in ("on", "off"):
+        say("ERROR say on, off or state")
+        return 2
+    if os.geteuid() != 0 and not os.environ.get("PR7OS_APT"):
+        say("ERROR this needs administrator rights (start it with pkexec)")
+        return 1
+    env = dict(os.environ, DEBIAN_FRONTEND="noninteractive")
+    if word == "on":
+        missing = [p for p in PACKAGES if not installed(p)]
+        if missing:
+            say("STEP Installing the remote desktop server (xrdp)")
+            subprocess.run([APT, "-o", "DPkg::Lock::Timeout=600", "update", "-qq"], env=env)
+            if subprocess.run([APT, "-o", "DPkg::Lock::Timeout=600", "install", "-y", *missing], env=env).returncode:
+                say("ERROR xrdp couldn't be installed (is the PC online?)")
+                return 1
+        say("STEP Starting it")
+        if subprocess.run([SYSTEMCTL, "enable", "--now", "xrdp"]).returncode:
+            say("ERROR xrdp didn't start")
+            return 1
+    else:
+        say("STEP Stopping it")
+        subprocess.run([SYSTEMCTL, "disable", "--now", "xrdp"])
+    say(f"DONE {word}")
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main(sys.argv[1:]))

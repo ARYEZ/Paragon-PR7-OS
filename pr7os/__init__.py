@@ -1,2 +1,2 @@
 """Paragon PR7-OS: the family look for a Debian + KDE Plasma desktop."""
-__version__ = "0.10.0"
+__version__ = "0.10.1"

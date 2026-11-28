@@ -44,7 +44,7 @@ class Machine:
                 *(["-enable-kvm", "-cpu", "host"] if kvm else ["-accel", "tcg"]),
                 "-vga", vga, "-display", "none", "-serial", f"file:{work / (name + '-serial.log')}",
                 "-device", "qemu-xhci", "-device", "usb-tablet",
-                "-netdev", "user,id=n", "-device", "virtio-net-pci,netdev=n",
+                "-netdev", "user,id=n,hostfwd=tcp:127.0.0.1:13389-:3389", "-device", "virtio-net-pci,netdev=n",
                 "-monitor", f"unix:{self.sock},server,nowait",
                 # the QEMU guest agent (qemu-guest-agent is in the image): commands inside the machine, e.g. the journal
                 "-device", "virtio-serial", "-chardev", f"socket,path={work / (name + '-qga.sock')},server=on,wait=off,id=qga0",
@@ -462,18 +462,45 @@ def main(iso: str, out_dir: str) -> int:
         if not ssh_ok:
             (out / "welcome.log").write_text(m.guest("/bin/sh", ["-c", "cat /tmp/welcome.log; journalctl -b --no-pager -o cat | grep -iE 'polkit|pkexec|sshd|openssh|pr7os-ssh' | grep -v guest-exec | tail -n 60"]))
         result.append(f"Welcome SSH: {'on (password asked, server running)' if ssh_ok else 'NOT ON'}")
-        # REMOTE DESKTOP: SET UP opens Plasma's KRdp page; the firewall lets 3389 in from home networks only
-        shot = welcome("SET UP", 12)
+        # REMOTE DESKTOP: TURN ON (Plasma's password dialog, the live password) starts xrdp; the firewall lets 3389 in
+        # from home networks only; then an RDP client on this runner (FreeRDP, through QEMU's port forward: the
+        # machine sees it from 10.0.2.2, a home network) logs in as a user of its own (the live user's desktop is on
+        # the screen, and one account can't run two) and a Plasma session (X11) must start for it
+        welcome("REMOTE DESKTOP/TURN ON", 8)
+        m.keys("live")
+        m.key("ret")
+        xrdp_on = False
+        for _ in range(20):
+            time.sleep(5)
+            m.key("shift")
+            if m.guest("/bin/sh", ["-c", "systemctl is-active xrdp || true"]).strip() == "active":
+                xrdp_on = True
+                break
+        shot = m.shot()
         shot.save(out / "welcome_remote.png")
-        kcm = m.guest("/bin/sh", ["-c", "pgrep -af systemsettings || true"])
-        m.guest("/bin/sh", ["-c", "pkill systemsettings || true"])
         rules = m.guest("/usr/sbin/ufw", ["status"])
         rdp_rules = [r for r in rules.splitlines() if r.startswith("3389")]
-        remote_ok = "kcm_krdpserver" in kcm and len(rdp_rules) == 3 and all("Anywhere" not in r for r in rdp_rules)
+        rules_ok = len(rdp_rules) == 3 and all("Anywhere" not in r for r in rdp_rules)
+        m.guest("/bin/sh", ["-c", "id rdptest >/dev/null 2>&1 || useradd -m -s /bin/bash rdptest; "
+                                  "echo rdptest:live | chpasswd"])
+        rdp = subprocess.run(["bash", "-c", (
+            "client=$(command -v xfreerdp3 || command -v xfreerdp); [ -n \"$client\" ] || { echo no client; exit 3; }; "
+            "Xvfb :99 -screen 0 1280x800x24 >/dev/null 2>&1 & xv=$!; sleep 2; "
+            "DISPLAY=:99 $client /v:127.0.0.1:13389 /u:rdptest /p:live /cert:ignore /sec:tls /size:1280x800 "
+            "> rdp-client.log 2>&1 & cl=$!; sleep 90; "
+            "DISPLAY=:99 import -window root rdp-session.png 2>/dev/null; kill $cl $xv 2>/dev/null; echo done")],
+            cwd=out, capture_output=True, text=True, timeout=200)
+        session = m.guest("/bin/sh", ["-c", "pgrep -u rdptest -a 'kwin_x11|plasmashell|Xorg|startplasma' || true"])
+        rdp_ok = "kwin_x11" in session and "plasmashell" in session
+        remote_ok = xrdp_on and rules_ok and rdp_ok
         if not remote_ok:
-            (out / "remote_desktop.txt").write_text(rules + "\n" + m.guest("/bin/sh", ["-c",
-                "journalctl -b --no-pager -o cat -u pr7os-remote-desktop-firewall; ls -la /var/lib/paragon"]))
-        result.append(f"Welcome REMOTE DESKTOP: {'settings opened, port 3389 home networks only' if remote_ok else 'NOT RIGHT (' + kcm.strip()[:60] + ' / ' + ' | '.join(rdp_rules)[:120] + ')'}")
+            (out / "remote_desktop.txt").write_text(rules + "\n== client\n" + rdp.stdout + rdp.stderr + "\n== session\n"
+                + session + "\n" + m.guest("/bin/sh", ["-c",
+                "journalctl -b --no-pager -o cat -u xrdp -u xrdp-sesman -u pr7os-remote-desktop-firewall | tail -n 80; "
+                "tail -n 60 /home/rdptest/.xsession-errors /var/log/xrdp-sesman.log 2>&1"]))
+        result.append(f"Welcome REMOTE DESKTOP: xrdp {'on' if xrdp_on else 'NOT ON'}, port 3389 "
+                      f"{'home networks only' if rules_ok else 'NOT RIGHT'}, an RDP client's login "
+                      f"{'got a Plasma session' if rdp_ok else 'GOT NO PLASMA SESSION'}")
         # DRIVERS: the helper reads this machine's graphics card (QEMU's) through lspci
         drivers = m.guest("/usr/libexec/paragon/pr7os-drivers-helper", ["state"])
         try:

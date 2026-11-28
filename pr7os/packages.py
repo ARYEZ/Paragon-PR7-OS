@@ -58,6 +58,8 @@ SYSTEM_FILES = {    # the system package's own files -> source in pr7os/static/s
     "usr/libexec/paragon/pr7os-ssh-helper": "../welcome/pr7os-ssh-helper",
     "usr/share/polkit-1/actions/org.paragon.pr7os.ssh.policy": "../welcome/org.paragon.pr7os.ssh.policy",
     "usr/libexec/paragon/pr7os-drivers-helper": "../welcome/pr7os-drivers-helper",
+    "usr/libexec/paragon/pr7os-remote-helper": "../welcome/pr7os-remote-helper",
+    "usr/share/polkit-1/actions/org.paragon.pr7os.remote.policy": "../welcome/org.paragon.pr7os.remote.policy",
     "usr/share/polkit-1/actions/org.paragon.pr7os.drivers.policy": "../welcome/org.paragon.pr7os.drivers.policy",
     "usr/share/applications/pr7os-welcome.desktop": "../welcome/pr7os-welcome.desktop",
     "etc/xdg/autostart/pr7os-welcome.desktop": "../welcome/pr7os-welcome-autostart.desktop",
@@ -65,6 +67,7 @@ SYSTEM_FILES = {    # the system package's own files -> source in pr7os/static/s
 EXECUTABLE = {"usr/bin/pr7os-update", "usr/libexec/paragon/pr7os-update-helper", "usr/bin/pr7os-steam",
               "usr/bin/pr7os-welcome", "usr/libexec/paragon/pr7os-ssh-helper",
               "usr/libexec/paragon/pr7os-drivers-helper", "usr/libexec/paragon/pr7os-flatpak-gl",
+              "usr/libexec/paragon/pr7os-remote-helper",
               "etc/initramfs-tools/hooks/paragon-plymouth-fonts"}
 
 
@@ -165,7 +168,7 @@ CONTROL = {
                              "Qt (PySide6, PyQt6) and the other Python packages the Paragon apps use."),
     "paragon-pr7os-system": ("all", "python3, paragon-pr7os-python, pkexec, avahi-daemon, libnss-mdns, cups, print-manager, unattended-upgrades, "
                                     "curl, wget, git, unzip, htop, ufw, plasma-firewall, flatpak, "
-                                    "plasma-discover-backend-flatpak, mesa-vulkan-drivers, gamemode, xdg-utils, timeshift, pciutils, mokutil, krdp",
+                                    "plasma-discover-backend-flatpak, mesa-vulkan-drivers, gamemode, xdg-utils, timeshift, pciutils, mokutil, xrdp, xorgxrdp, kwin-x11",
                              "Paragon PR7-OS system",
                              "What PR7-OS adds to Debian's Plasma: names on the network (name.local), printing, Debian's\n"
                              " security fixes by themselves, command-line basics, the firewall, Flatpak with Flathub\n"

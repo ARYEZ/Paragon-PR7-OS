@@ -68,7 +68,13 @@ a live ISO with the Calamares installer. The owner writes Python; explain the wh
   (Bebas Neue + fonts.conf into the initramfs: Plymouth's Image.Text draws nothing without them). Boot test: hook 0300's
   init-premount `paragon-asktest` (only with paragon.asktest) asks with plymouth ask-for-password, marks ttyS0; the
   test screenshots it, types, checks the orange dots and /run/pr7os-asktest.
-- **Remote desktop** (0.6.1): the system package Depends on krdp; `setup_system.remote_desktop` adds ufw 3389/tcp from
+- **Remote desktop is xrdp** (0.10.1; KRdp's H.264 stream was refused by Remote Desktop Connection and Windows App,
+  at any size): system Depends xrdp, xorgxrdp, kwin-x11 (xrdp sessions are Plasma on X11 via Xsession's
+  x-session-manager); `static/welcome/pr7os-remote-helper` on / off / state (pkexec, polkit org.paragon.pr7os.remote);
+  the card's TURN ON first stops KRdp for the account (`krdp_units` found by name, `krdp_off_commands`); one account
+  can't run two Plasma sessions, so the card says sign out first. Boot test: TURN ON, then FreeRDP on the runner through
+  QEMU's hostfwd 13389 logs in as a test user `rdptest` and kwin_x11 + plasmashell must run for it.
+- **Remote desktop's firewall** (0.6.1): `setup_system.remote_desktop` adds ufw 3389/tcp from
   10/8, 172.16/12, 192.168/16 once (marker /var/lib/paragon/remote-desktop-allowed; never from anywhere); Welcome's
   REMOTE DESKTOP card (`remote_view`, `pgrep -x krdpserver`) and SET UP = `systemsettings kcm_krdpserver` (KRdp keeps its
   password in Plasma's wallet and makes its own certificate: the KCM does it, not us).

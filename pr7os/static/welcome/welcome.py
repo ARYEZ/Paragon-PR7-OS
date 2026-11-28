@@ -6,8 +6,9 @@
                 and finish_sync.py takes Plasma's global theme along
     KEYS        Print (PR7-Q), Alt+Space (PR7-LN), Ctrl+Alt+Space (PR7-IS)
     SSH         on / off through pr7os-ssh-helper (pkexec: your password once); shows how to reach this PC
-    REMOTE      Plasma's remote desktop (KRdp): this PC from Windows' Remote Desktop Connection; SET UP opens its
-                settings page (your user name and password there); the firewall lets home networks in (PR7-OS's setup)
+    REMOTE      xrdp on / off through pr7os-remote-helper (pkexec): Windows' Remote Desktop Connection logs in with
+                your PR7-OS user name and password into a Plasma session of its own; KRdp (Plasma's, whose stream
+                Windows refused) is stopped for this account first; the firewall lets home networks in
     DRIVERS     pr7os-drivers-helper: firmware for any PC, the NVIDIA driver for an NVIDIA card (and Secure Boot's key)
     PRINTERS    Plasma's printer settings
     STEAM       pr7os-steam (Discover on Steam's Flathub page, or Steam itself)
@@ -147,13 +148,34 @@ def ssh_state() -> str:
         return "off"
 
 
-def remote_running() -> bool:
-    """Is Plasma's remote desktop server (krdpserver) running for this account?"""
+def remote_helper() -> list[str]:
+    if os.environ.get("PR7OS_REMOTE_HELPER"):
+        return shlex.split(os.environ["PR7OS_REMOTE_HELPER"])
+    return ["/usr/libexec/paragon/pr7os-remote-helper"]
+
+
+def remote_state() -> str:
     try:
-        return subprocess.run(["pgrep", "-u", str(os.getuid()), "-x", "krdpserver"], capture_output=True,
-                              timeout=5).returncode == 0
+        return subprocess.run(remote_helper() + ["state"], capture_output=True, text=True,
+                              timeout=10).stdout.strip() or "off"
     except (OSError, subprocess.SubprocessError):
-        return False
+        return "off"
+
+
+def krdp_off_commands(units: list[str]) -> list[list[str]]:
+    """KRdp for this account: its server stopped, and its start-at-login unit(s) off (they hold port 3389, which xrdp
+    takes). Unit names differ between Plasma versions, so they're found by name, not assumed."""
+    out = [["systemctl", "--user", "disable", "--now", u] for u in units]
+    return out + [["pkill", "-u", str(os.getuid()), "-x", "krdpserver"]]
+
+
+def krdp_units() -> list[str]:
+    try:
+        text = subprocess.run(["systemctl", "--user", "list-unit-files", "--plain", "--no-legend", "*krdp*"],
+                              capture_output=True, text=True, timeout=10).stdout
+    except (OSError, subprocess.SubprocessError):
+        return []
+    return [line.split()[0] for line in text.splitlines() if line.split()]
 
 
 def home_address() -> str:
@@ -168,10 +190,10 @@ def home_address() -> str:
 
 def remote_view(running: bool, host: str, address: str) -> str:
     if not running:
-        return ("Off: SET UP, choose a user name and password and switch it on; then, from Windows' Remote Desktop "
-                "Connection, this PC's desktop.")
-    where = f"{host}.local" + (f" (or {address})" if address and not address.startswith("127.") else "")
-    return f"On: in Windows' Remote Desktop Connection, computer {where}, with the user name and password you set."
+        return "Off: other computers can't open a desktop on this one."
+    where = (address if address and not address.startswith("127.") else f"{host}.local")
+    return (f"On: in Windows' Remote Desktop Connection, computer {where}, your PR7-OS user name and password. "
+            "Sign out here first: one account can't run two desktops at once.")
 
 
 def drivers_helper() -> list[str]:
@@ -291,10 +313,11 @@ class Window(QWidget):
         self.show_ssh()
 
         box, row, self.remote_text = card("REMOTE DESKTOP", "")
-        b = QPushButton("SET UP")
-        b.clicked.connect(lambda: self.start(["systemsettings", "kcm_krdpserver"]))
-        row.addWidget(b)
+        self.remote_key = QPushButton("")
+        self.remote_key.clicked.connect(self.toggle_remote)
+        row.addWidget(self.remote_key)
         lay.addWidget(box)
+        self.remote = remote_state()
         self.show_remote()
 
         box, row, self.drivers_text = card("DRIVERS", "")
@@ -396,8 +419,27 @@ class Window(QWidget):
             if word != "MOK":                        # the password is shown once, on the card; never kept elsewhere
                 self.last_line = line
 
-    def show_remote(self) -> None:
-        self.remote_text.setText(remote_view(remote_running(), socket.gethostname(), home_address()))
+    def show_remote(self, note: str = "") -> None:
+        self.remote_text.setText(note or remote_view(self.remote == "on", socket.gethostname(), home_address()))
+        self.remote_key.setText("TURN OFF" if self.remote == "on" else "TURN ON")
+        self.remote_key.setEnabled(True)
+
+    def toggle_remote(self) -> None:
+        word = "off" if self.remote == "on" else "on"
+        self.remote_key.setEnabled(False)
+        if word == "on":
+            for args in krdp_off_commands(krdp_units()):
+                self.configure(args)
+        self.remote_text.setText("Your password lets PR7-OS change this.")
+        self._run(remote_helper(), "PR7OS_REMOTE_HELPER", word, self.remote_text, self._remote_done)
+
+    def _remote_done(self, code: int) -> None:
+        self._read()
+        if code in (126, 127):
+            self.show_remote("Nothing was changed (no password given).")
+            return
+        self.remote = remote_state()
+        self.show_remote("" if code == 0 else self.last_line.partition(" ")[2])
 
     def show_drivers(self, note: str = "") -> None:
         text, key = drivers_view(drivers_state())
@@ -449,10 +491,18 @@ def main(argv: list[str]) -> int:
 
 
 def press(w: "Window", label: str) -> bool:
+    """Click the key with this label; "CARD/KEY" picks it on that card (SSH and REMOTE DESKTOP both say TURN ON)."""
+    card_name, _, key = label.rpartition("/")
     for b in w.findChildren(QPushButton):
-        if b.text() == label and b.isEnabled():
-            b.click()
-            return True
+        if b.text() != key or not b.isEnabled():
+            continue
+        if card_name:
+            box = b.parentWidget()
+            titles = [lab.text() for lab in box.findChildren(QLabel)] if box else []
+            if card_name not in titles:
+                continue
+        b.click()
+        return True
     return False
 
 

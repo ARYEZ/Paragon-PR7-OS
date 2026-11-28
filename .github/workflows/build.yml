@@ -207,7 +207,9 @@ jobs:
         run: |
           echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
           sudo udevadm control --reload-rules && sudo udevadm trigger --name-match=kvm
-          sudo apt-get install -y -q qemu-system-x86 ovmf xorriso
+          sudo apt-get install -y -q qemu-system-x86 ovmf xorriso xvfb imagemagick
+          # an RDP client for the remote desktop check (FreeRDP 3 on newer runners, 2 on older)
+          sudo apt-get install -y -q freerdp3-x11 || sudo apt-get install -y -q freerdp2-x11
           python tools/boot_test.py "$ISO" shots
       - name: Screenshots to the ci-boot-screens branch (written only by CI)
         if: always()

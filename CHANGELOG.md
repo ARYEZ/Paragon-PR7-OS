@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.10.1
+
+- **Remote desktop through xrdp**: Plasma's KRdp sent a video stream (H.264) that both of Microsoft's clients refused
+  (Remote Desktop Connection: protocol error 0xd06; Windows App: "Invalid packet format"), at 4K and at 1080p alike.
+  PR7-OS now uses xrdp, the remote desktop server Windows' own client works with: Welcome's REMOTE DESKTOP card turns
+  it on and off (your password once); Windows logs in with your PR7-OS user name and password and gets a Plasma
+  session of its own, so sign out on the PC first (one account can't run two desktops at once). Turning it on stops
+  KRdp for your account (both want port 3389). The firewall still lets 3389 in from home networks only.
+- Welcome's `--press` takes "CARD/KEY" (SSH and REMOTE DESKTOP both have TURN ON).
+
 ## 0.10.0
 
 A new ISO with everything since 0.5.0 (DRIVERS, an encrypted disk by default, remote desktop from Windows, Steam's
