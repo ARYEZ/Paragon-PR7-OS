@@ -1,5 +1,20 @@
 # Changelog
 
+## 0.7.0
+
+A new ISO with everything since 0.5.0: DRIVERS (0.5.1), an encrypted disk by default with the splash asking for its
+password (0.5.2), remote desktop from Windows (0.6.1), Steam's NVIDIA libraries (0.6.2), updates that always go
+forward (0.6.3). Its boot test checks the encrypted disk's question, Welcome's keys (FONT, BACKUPS, SSH, REMOTE
+DESKTOP, DRIVERS) and sleep / wake. 0.6.0's run showed the machine, not PR7-OS, in the way, so the login run now boots:
+- with UEFI firmware, as a real PC: its framebuffer is there from the first moment, so Plymouth draws the unlock
+  question in the theme (under BIOS it asked in text until the graphics driver loaded: the question and the five
+  stars showed, the dots in the family orange didn't);
+- with QEMU's standard graphics: the virtio graphics driver doesn't survive sleep (KWin: "Pageflip timed out! This is
+  a bug in the virtio_gpu kernel driver"), so the screen stayed dark after waking, though the lock screen asked for
+  and took the password;
+- and Welcome is started as Plasma starts an app (the user's own service manager): started from the guest agent it
+  belonged to a system service, polkit found no password agent for it, and SSH's TURN ON got no password dialog.
+
 ## 0.6.3
 
 - **Updates always go forward**: PR7-OS Update took GitHub's "latest" release, which is only the last one published;

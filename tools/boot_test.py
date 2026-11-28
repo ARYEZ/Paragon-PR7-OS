@@ -35,14 +35,14 @@ def first(paths):
 
 
 class Machine:
-    def __init__(self, args: list[str], work: Path, name: str):
+    def __init__(self, args: list[str], work: Path, name: str, vga: str = "virtio"):
         self.work = work
         self.sock = work / f"{name}.sock"
         kvm = os.access("/dev/kvm", os.R_OK | os.W_OK)
         base = ["qemu-system-x86_64", "-machine", "q35", "-m", "6144", "-smp", "4",
                 "-global", "ICH9-LPC.disable_s3=0",          # sleep (S3) offered to the guest: the suspend check
                 *(["-enable-kvm", "-cpu", "host"] if kvm else ["-accel", "tcg"]),
-                "-vga", "virtio", "-display", "none", "-serial", f"file:{work / (name + '-serial.log')}",
+                "-vga", vga, "-display", "none", "-serial", f"file:{work / (name + '-serial.log')}",
                 "-device", "qemu-xhci", "-device", "usb-tablet",
                 "-netdev", "user,id=n", "-device", "virtio-net-pci,netdev=n",
                 "-monitor", f"unix:{self.sock},server,nowait",
@@ -193,6 +193,15 @@ def contact_sheet(tiles: list[tuple[str, bool, Image.Image]], out: Path):
     sheet.save(out)
 
 
+def as_app(m: Machine, command: str) -> str:
+    """A command started the way Plasma starts an app: a transient unit of the user's own service manager, with the
+    session's environment. polkit maps such a process to the user's desktop session (and its password agent); a
+    process started from the guest agent (in_session) belongs to a system service and gets no password dialog."""
+    return m.guest("/bin/sh", ["-c", "U=$(id -u paragon); runuser -u paragon -- env XDG_RUNTIME_DIR=/run/user/$U "
+                                     "DBUS_SESSION_BUS_ADDRESS=unix:path=/run/user/$U/bus systemd-run --user --collect "
+                                     f"--quiet -- sh -c '{command}'"])
+
+
 def in_session(m: Machine, command: str) -> str:
     """A command as the live user inside their Plasma session (Wayland, their session bus), not waited for."""
     env = ("XDG_RUNTIME_DIR=/run/user/$U WAYLAND_DISPLAY=wayland-0 DISPLAY=:0 "
@@ -253,8 +262,17 @@ def main(iso: str, out_dir: str) -> int:
                        check=True, capture_output=True)
     append = ("boot=live components quiet splash loglevel=3 username=paragon user-fullname=Paragon hostname=pr7os locales=en_US.UTF-8 "
               "keyboard-layouts=us live-config.noautologin console=ttyS0,115200 console=tty0 paragon.asktest")
-    m = Machine(["-kernel", str(work / "vmlinuz"), "-initrd", str(work / "initrd.img"), "-append", append,
-                 "-cdrom", iso], work, "login")
+    # UEFI, as on a real PC: its framebuffer is there from the start (simpledrm), so Plymouth draws the unlock
+    # question in the theme (under BIOS it falls back to text until the graphics driver loads); QEMU's standard
+    # graphics (bochs-drm), whose driver survives sleep (virtio-gpu's doesn't: KWin's page flips time out after S3)
+    uefi2 = []
+    if code:
+        uefi2 = ["-drive", f"if=pflash,format=raw,readonly=on,file={code}"]
+        if vars_src and "OVMF.fd" not in code:
+            shutil.copy(vars_src, work / "vars2.fd")
+            uefi2 += ["-drive", f"if=pflash,format=raw,file={work / 'vars2.fd'}"]
+    m = Machine(uefi2 + ["-kernel", str(work / "vmlinuz"), "-initrd", str(work / "initrd.img"), "-append", append,
+                 "-cdrom", iso], work, "login", vga="std")
     login_ok = lock_shown = unlocked = packaged = False
     asked = dots_shown = passed_on = welcome_ok = sleep_ok = False
     firewall_on = flathub_listed = avahi_on = False
@@ -394,7 +412,7 @@ def main(iso: str, out_dir: str) -> int:
         def welcome(label: str, wait: float) -> Image.Image:
             m.guest("/bin/sh", ["-c", "pkill -f 'welcome/welcome.py' || true"])
             time.sleep(2)
-            in_session(m, f'exec pr7os-welcome --press "{label}" > /tmp/welcome.log 2>&1')
+            as_app(m, f'exec pr7os-welcome --press "{label}" > /tmp/welcome.log 2>&1')
             time.sleep(wait)
             m.key("shift")
             return m.shot()
@@ -437,7 +455,7 @@ def main(iso: str, out_dir: str) -> int:
         shot = m.shot()
         shot.save(out / "welcome_ssh.png")
         if not ssh_ok:
-            (out / "welcome.log").write_text(m.guest("/bin/sh", ["-c", "cat /tmp/welcome.log; journalctl -b --no-pager -o cat | grep -iE 'polkit|pkexec|ssh' | tail -n 40"]))
+            (out / "welcome.log").write_text(m.guest("/bin/sh", ["-c", "cat /tmp/welcome.log; journalctl -b --no-pager -o cat | grep -iE 'polkit|pkexec|sshd|openssh|pr7os-ssh' | grep -v guest-exec | tail -n 60"]))
         result.append(f"Welcome SSH: {'on (password asked, server running)' if ssh_ok else 'NOT ON'}")
         # REMOTE DESKTOP: SET UP opens Plasma's KRdp page; the firewall lets 3389 in from home networks only
         shot = welcome("SET UP", 12)
