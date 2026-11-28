@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.13.1
+
+- No changes for installed PCs (the same packages as 0.12.1). The version moves past 0.13.0 so that later pushes are
+  package-only releases: an x.y.0 version builds an ISO on every push, and ISOs are made only when asked for.
+
 ## 0.13.0
 
 A new ISO with the login screen's input driver (0.12.1), remote desktop through xrdp, the network made the PC's on
