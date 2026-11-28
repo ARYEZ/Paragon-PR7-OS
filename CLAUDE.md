@@ -75,9 +75,8 @@ a live ISO with the Calamares installer. The owner writes Python; explain the wh
   can't run two Plasma sessions, so the card says sign out first. Boot test: TURN ON, then FreeRDP on the runner through
   QEMU's hostfwd 13389 logs in as a test user `rdptest` and kwin_x11 + plasmashell must run for it.
 - **Remote desktop's firewall** (0.6.1): `setup_system.remote_desktop` adds ufw 3389/tcp from
-  10/8, 172.16/12, 192.168/16 once (marker /var/lib/paragon/remote-desktop-allowed; never from anywhere); Welcome's
-  REMOTE DESKTOP card (`remote_view`, `pgrep -x krdpserver`) and SET UP = `systemsettings kcm_krdpserver` (KRdp keeps its
-  password in Plasma's wallet and makes its own certificate: the KCM does it, not us).
+  10/8, 172.16/12, 192.168/16 once (marker /var/lib/paragon/remote-desktop-allowed; never from anywhere), and at
+  start-up `pr7os-remote-desktop-firewall.service` until all three are in (a build chroot / container can't: ufw initcaps).
 - **Flatpak NVIDIA libraries** (0.6.2): `static/system/pr7os-flatpak-gl` + .service (system package; setup_system
   enables it): /sys/module/{nvidia,nvidia_current}/version -> org.freedesktop.Platform.GL.nvidia-<dashes>; flatpak
   update (Flatpak picks it), else install it by name; stamp /var/lib/paragon/flatpak-gl-nvidia. PR7OS_SYSTEMCTL in tests.
