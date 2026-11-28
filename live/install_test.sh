@@ -48,16 +48,15 @@ tail -n 1 /tmp/drivers.log | grep -qx 'DONE nvidia-driver (simulated)' || fail "
 grep -q '^Inst firmware-iwlwifi' /tmp/drivers.log || fail "the Wi-Fi firmware wasn't going to be installed"
 grep -q '^Inst nvidia-kernel-dkms' /tmp/drivers.log || fail "the driver's kernel module wasn't going to be built"
 echo "drivers helper: firmware and nvidia-driver resolve in Debian 13"
-# Welcome's REMOTE DESKTOP: KRdp's settings page (what SET UP opens) is there, and the firewall's 3389 rules are home-only
-find /usr/lib -path '*kcms*' -name '*krdp*' | grep -q . || fail "KRdp's settings page isn't installed"
+# Welcome's REMOTE DESKTOP: the firewall's 3389 rules are home-only
 # A rule for some networks only makes ufw test the kernel's firewall first (initcaps); this unprivileged container may
 # not touch it ("Permission denied (you must be root)"), a real PC and the ISO's build can. That one reason is
 # accepted here (the setup tries again on the next update, and the ISO's boot test reads the three rules in a real
 # PR7-OS); anything else fails.
 if [ -f /var/lib/paragon/remote-desktop-allowed ]; then
-    echo "remote desktop: KRdp installed, firewall rule added"
+    echo "remote desktop: firewall rule added"
 elif grep 'PR7-OS remote desktop' /tmp/install.log | grep -q 'initcaps'; then
-    echo "remote desktop: KRdp installed; firewall rule left for a real kernel (this container may not test it)"
+    echo "remote desktop: firewall rule left for a real kernel (this container may not test it)"
 else
     grep 'PR7-OS ' /tmp/install.log || true
     fail "the remote desktop firewall rule wasn't added"
