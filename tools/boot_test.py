@@ -261,7 +261,9 @@ def main(iso: str, out_dir: str) -> int:
         subprocess.run(["xorriso", "-osirrox", "on", "-indev", iso, "-extract", f"/live/{f}", str(work / f)],
                        check=True, capture_output=True)
     append = ("boot=live components quiet splash loglevel=3 plymouth.use-simpledrm username=paragon user-fullname=Paragon hostname=pr7os locales=en_US.UTF-8 "
-              "keyboard-layouts=us live-config.noautologin console=ttyS0,115200 console=tty0 paragon.asktest")
+              "keyboard-layouts=us live-config.noautologin console=ttyS0,115200 console=tty0 paragon.asktest "
+              # the serial console is the test's own (its log): without this Plymouth turns to text mode for it
+              "plymouth.ignore-serial-consoles")
     # UEFI, as on a real PC: its framebuffer is there from the start (simpledrm), so Plymouth draws the unlock
     # question in the theme (under BIOS it falls back to text until the graphics driver loads); QEMU's standard
     # graphics (bochs-drm), whose driver survives sleep (virtio-gpu's doesn't: KWin's page flips time out after S3)
@@ -296,7 +298,7 @@ def main(iso: str, out_dir: str) -> int:
             typed.save(out / "unlock_typed.png")
             dots_shown = orange(typed) > orange(empty) + 40      # five dots in the family orange
             m.key("ret")
-        result.append(f"unlock question: {'asked' if asked else 'NOT ASKED'}; dots: "
+        result.append(f"unlock question: {'asked' if asked else 'NOT ASKED'}; themed dots (reported, not required): "
                       f"{'shown' if dots_shown else 'NOT SHOWN'}")
         while m.elapsed() < 240:
             img = m.shot()
@@ -546,7 +548,8 @@ def main(iso: str, out_dir: str) -> int:
     timeline(frames, out / "timeline.png")
     (out / "result.txt").write_text("\n".join(result) + "\n")
     print("\n".join(result))
-    return 0 if (asked and dots_shown and passed_on and welcome_ok and sleep_ok and desktop_ok and login_ok and lock_shown and unlocked and packaged and firewall_on
+    # the question's look (dots_shown) is reported, not required: asked and answered are (the owner's choice, 0.10.0)
+    return 0 if (asked and passed_on and welcome_ok and sleep_ok and desktop_ok and login_ok and lock_shown and unlocked and packaged and firewall_on
                   and flathub_listed and avahi_on and print_ok and apps_ok and launcher_ok and is_running) else 1
 
 

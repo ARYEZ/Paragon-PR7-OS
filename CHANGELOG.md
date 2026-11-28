@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.10.0
+
+A new ISO with everything since 0.5.0 (DRIVERS, an encrypted disk by default, remote desktop from Windows, Steam's
+NVIDIA libraries, updates that always go forward, pr7os-update over SSH). 0.9.0's boot test found why the encrypted
+disk's question showed in text: the startup image had everything (Plymouth running, the theme, its plugins, Bebas
+Neue, the graphics device), but the test's own serial console (console=ttyS0, for its log) makes Plymouth fall back to
+text unless the kernel line also says `plymouth.ignore-serial-consoles`. A PC has no serial console; the test now says
+so. The question being asked and its answer arriving are required for the ISO; its themed look is reported, not
+required (the owner's choice).
+
 ## 0.9.0
 
 A new ISO. 0.8.0's boot test passed everything (remote desktop's rules included) except the encrypted disk's
