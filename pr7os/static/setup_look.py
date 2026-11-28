@@ -155,6 +155,86 @@ def krunner_keys_back() -> None:
         subprocess.run(["dpkg-divert", "--package", "paragon", "--rename", "--remove", str(KRUNNER_KEYS)], check=True)
 
 
+# --------------------------------------------------------------------------- LibreOffice's splash
+LO_PROGRAM = Path(os.environ.get("PR7OS_LO_PROGRAM", "/usr/lib/libreoffice/program"))
+LO_RC = Path(os.environ.get("PR7OS_LO_RC", "/etc/libreoffice/sofficerc"))
+LO_ART = Path(os.environ.get("PR7OS_LO_ART", "/usr/share/paragon/libreoffice"))
+LO_PICTURES = ("intro.png", "intro-highres.png")
+# the progress bar under the splash (assets.LO_SPLASH: 640 x 300 at 1x): the family's orange on onyx, pearl text
+LO_PROGRESS = {"Logo": "1", "NativeProgress": "false", "ProgressBarColor": "242,120,30",
+               "ProgressFrameColor": "28,28,32", "ProgressTextColor": "232,232,234", "ProgressPosition": "40,262",
+               "ProgressSize": "560,4", "ProgressTextBaseline": "250"}
+
+
+def _orig(path: Path) -> Path:
+    return path.with_name(path.name + ".paragon-orig")
+
+
+def _divert(path: Path) -> bool:
+    """LibreOffice's own file set aside (its updates go there too); False when there's nothing to set aside."""
+    listed = subprocess.run(["dpkg-divert", "--list", str(path)], capture_output=True, text=True).stdout
+    if "paragon" in listed:
+        return True
+    if not (path.exists() or path.is_symlink()):
+        return False
+    subprocess.run(["dpkg-divert", "--package", "paragon", "--divert", str(_orig(path)), "--rename", "--add",
+                    str(path)], check=True)
+    return True
+
+
+def _undivert(path: Path) -> None:
+    listed = subprocess.run(["dpkg-divert", "--list", str(path)], capture_output=True, text=True).stdout
+    if "paragon" in listed:
+        path.unlink(missing_ok=True)
+        subprocess.run(["dpkg-divert", "--package", "paragon", "--rename", "--remove", str(path)], check=True)
+
+
+def sofficerc(original: str) -> str:
+    """LibreOffice's sofficerc with the splash's progress bar in the family's colours, everything else as it was."""
+    out, seen = [], set()
+    for line in original.splitlines():
+        key = line.split("=", 1)[0].strip()
+        if key in LO_PROGRESS:
+            out.append(f"{key}={LO_PROGRESS[key]}")
+            seen.add(key)
+        else:
+            out.append(line)
+    missing = [f"{k}={v}" for k, v in LO_PROGRESS.items() if k not in seen]
+    if missing:
+        at = next((i + 1 for i, line in enumerate(out) if line.strip() == "[Bootstrap]"), None)
+        if at is None:
+            out = ["[Bootstrap]"] + missing + out
+        else:
+            out[at:at] = missing
+    return "\n".join(out) + "\n"
+
+
+def libreoffice_look() -> None:
+    """LibreOffice's splash in the family look: its pictures and its sofficerc (the progress bar's colours: Debian's
+    frame is green) set aside, ours in their place; its updates land on the set-aside copies and the look's dpkg
+    trigger runs this again."""
+    if not LO_PROGRAM.is_dir() or not shutil.which("dpkg-divert"):
+        return
+    for name in LO_PICTURES:
+        target, ours = LO_PROGRAM / name, LO_ART / name
+        if ours.exists() and _divert(target):
+            if target.is_symlink():
+                target.unlink()
+            shutil.copyfile(ours, target)
+    if _divert(LO_RC) and _orig(LO_RC).exists():
+        if LO_RC.is_symlink():
+            LO_RC.unlink()
+        LO_RC.write_text(sofficerc(_orig(LO_RC).read_text(encoding="utf-8")), encoding="utf-8")
+
+
+def libreoffice_back() -> None:
+    if not shutil.which("dpkg-divert"):
+        return
+    for name in LO_PICTURES:
+        _undivert(LO_PROGRAM / name)
+    _undivert(LO_RC)
+
+
 # --------------------------------------------------------------------------- the account picture
 FACE = "usr/share/paragon/face.png"
 DEBIAN_PICTURES = ("usr/share/desktop-base", "usr/share/pixmaps", "usr/share/images/desktop-base")
@@ -320,6 +400,7 @@ def configure(strict: bool) -> None:
     os_release()
     spectacle_keys_off()
     krunner_keys()
+    libreoffice_look()
     skel_faces()
     faces()
     if shutil.which("plymouth-set-default-theme"):
@@ -335,6 +416,7 @@ def remove() -> None:
     unskel_faces()
     spectacle_keys_on()
     krunner_keys_back()
+    libreoffice_back()
     if STYLE.exists():
         shutil.rmtree(STYLE)
     for pf2 in GRUB_THEME.glob("*.pf2"):

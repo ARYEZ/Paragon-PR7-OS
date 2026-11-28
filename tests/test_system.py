@@ -285,3 +285,68 @@ def test_no_login_screen_goes_back_to_x11_once(seat):
     assert "DisplayServer=x11" in conf and "systemctl restart sddm" in log.read_text()
     log.write_text("")
     assert mod.main() == 0 and log.read_text() == ""             # the marker: never again, no restart loop
+
+
+DEBIAN_SOFFICERC = """[Bootstrap]
+Logo=1
+NativeProgress=false
+URE_BOOTSTRAP=vnd.sun.star.pathname:/usr/lib/libreoffice/program/fundamentalrc
+HideEula=1
+ProgressBarColor=255,255,255
+ProgressSize=407,6
+ProgressPosition=61,317
+ProgressFrameColor=20,136,3
+ProgressTextColor=255,255,255
+ProgressTextBaseline=287
+"""
+
+
+def test_libreoffice_splash_in_the_family_look(tmp_path, monkeypatch):
+    """LibreOffice's splash pictures and sofficerc set aside, ours in their place (the progress bar's green frame
+    gone, the rest of sofficerc kept); the same again on its updates; removing the look puts LibreOffice's back."""
+    from test_assets import family
+    mod = load(STATIC / "setup_look.py", "setup_look_lo")
+    program, art, etc = tmp_path / "program", tmp_path / "art", tmp_path / "etc"
+    for d in (program, art, etc):
+        d.mkdir()
+    for name in ("intro.png", "intro-highres.png"):
+        (program / name).write_bytes(b"libreoffice " + name.encode())
+        (art / name).write_bytes(b"paragon " + name.encode())
+    (etc / "sofficerc").write_text(DEBIAN_SOFFICERC)
+    db = tmp_path / "diversions"
+    tool = tmp_path / "bin/dpkg-divert"
+    tool.parent.mkdir()
+    tool.write_text(f'''#!/bin/sh
+db="{db}"; touch "$db"
+case "$1" in
+  --list) grep -xF "$2" "$db" | sed 's/$/ by paragon/' ;;
+  --package) shift 2
+    if [ "$1" = --divert ]; then to="$2"; shift 3; path="$2"; mv "$path" "$to"; echo "$path" >> "$db"
+    else path="$3"; grep -vxF "$path" "$db" > "$db.n"; mv "$db.n" "$db"; mv "$path.paragon-orig" "$path"; fi ;;
+esac
+''')
+    tool.chmod(0o755)
+    monkeypatch.setenv("PATH", f"{tool.parent}:{os.environ['PATH']}")
+    monkeypatch.setattr(mod, "LO_PROGRAM", program)
+    monkeypatch.setattr(mod, "LO_ART", art)
+    monkeypatch.setattr(mod, "LO_RC", etc / "sofficerc")
+    mod.libreoffice_look()
+    assert (program / "intro.png").read_bytes() == b"paragon intro.png"
+    assert (program / "intro.png.paragon-orig").read_bytes() == b"libreoffice intro.png"
+    rc = (etc / "sofficerc").read_text()
+    assert "URE_BOOTSTRAP=vnd.sun.star.pathname:/usr/lib/libreoffice/program/fundamentalrc" in rc and "HideEula=1" in rc
+    assert "20,136,3" not in rc and "ProgressBarColor=242,120,30" in rc
+    for line in rc.splitlines():                                     # every colour the family's
+        if line.startswith("Progress") and "Color" in line:
+            assert family(*(int(x) for x in line.split("=")[1].split(","))), line
+    mod.libreoffice_look()                                          # every update: the same
+    assert (etc / "sofficerc").read_text() == rc
+    mod.libreoffice_back()
+    assert (program / "intro.png").read_bytes() == b"libreoffice intro.png"
+    assert (etc / "sofficerc").read_text() == DEBIAN_SOFFICERC
+
+
+def test_sofficerc_without_progress_lines_gets_them():
+    mod = load(STATIC / "setup_look.py", "setup_look_lo2")
+    rc = mod.sofficerc("[Bootstrap]\nURE_BOOTSTRAP=x\n")
+    assert rc.startswith("[Bootstrap]\nLogo=1\n") and "ProgressFrameColor=28,28,32" in rc and "URE_BOOTSTRAP=x" in rc

@@ -206,3 +206,25 @@ def test_the_lock_screen_has_the_paragon_wallpaper(built):
     conf = (root / "etc/xdg/kscreenlockerrc").read_text()
     assert "[Greeter]\nWallpaperPlugin=org.kde.image" in conf
     assert "[Greeter][Wallpaper][org.kde.image][General]\nImage=file:///usr/share/wallpapers/Paragon/" in conf
+
+
+def test_libreoffice_settings_and_splash(built):
+    """LibreOffice's system settings: documents in Inter (Bebas Neue has capitals only), charts in the family's
+    colours; valid XML in LibreOffice's registry format; the splash at 1x and 2x."""
+    import xml.etree.ElementTree as ET
+    from PySide6.QtGui import QImage
+    root, files = built
+    xcd = root / "usr/lib/libreoffice/share/registry/paragon.xcd"
+    tree = ET.parse(xcd)
+    oor = "{http://openoffice.org/2001/registry}"
+    comps = {c.get(oor + "name"): c for c in tree.getroot() if c.tag == oor + "component-data"}
+    assert set(comps) == {"Writer", "Chart"}
+    fonts = {p.get(oor + "name"): p.find("value").text for p in comps["Writer"].iter("prop")}
+    assert fonts == {k: "Inter" for k in ("Standard", "Heading", "List", "Caption", "Index")}
+    series = [int(v) for v in comps["Chart"].find(".//prop/value").text.split()]
+    assert len(series) == 12
+    for v in series:
+        assert family(v >> 16 & 255, v >> 8 & 255, v & 255), hex(v)
+    small = QImage(str(root / "usr/share/paragon/libreoffice/intro.png"))
+    big = QImage(str(root / "usr/share/paragon/libreoffice/intro-highres.png"))
+    assert (small.width(), small.height()) == (640, 300) and (big.width(), big.height()) == (1280, 600)

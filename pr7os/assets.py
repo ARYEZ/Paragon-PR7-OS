@@ -510,6 +510,46 @@ terminal-box: "terminal_*.png"
 """
 
 
+# LibreOffice: twelve chart colours, the family's hues and greys (its own defaults include blue and green)
+LO_CHART = ["#DE0639", "#F2781E", "#D9468C", "#FFB347", "#8A8A92", "#FF4F7B", "#A0420A", "#B9B5B8", "#7A0A2E",
+            "#FFA05C", "#4A4A52", "#C2185B"]
+LO_DOC_FONT = "Inter"
+LO_SPLASH = (640, 300)          # the splash's size at 1x; setup_look's progress bar is placed for it
+
+
+def libreoffice_settings() -> str:
+    """A LibreOffice system settings layer (share/registry/*.xcd, read after its own main.xcd). Names from LibreOffice
+    25.2's officecfg schema: Office.Writer/DefaultFont, Office.Chart/DefaultColor/Series (unsigned 0xRRGGBB)."""
+    fonts = "".join(f'<prop oor:name="{k}" oor:op="fuse"><value>{LO_DOC_FONT}</value></prop>'
+                    for k in ("Standard", "Heading", "List", "Caption", "Index"))
+    series = " ".join(str(int(c[1:], 16)) for c in LO_CHART)
+    return ('<?xml version="1.0" encoding="UTF-8"?>\n'
+            '<!-- Paragon PR7-OS: LibreOffice in the family look (paragon-pr7os-look) -->\n'
+            '<oor:data xmlns:xs="http://www.w3.org/2001/XMLSchema" '
+            'xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:oor="http://openoffice.org/2001/registry">\n'
+            '<dependency file="main"/>\n'
+            '<oor:component-data oor:name="Writer" oor:package="org.openoffice.Office">'
+            f'<node oor:name="DefaultFont" oor:op="fuse">{fonts}</node></oor:component-data>\n'
+            '<oor:component-data oor:name="Chart" oor:package="org.openoffice.Office">'
+            '<node oor:name="DefaultColor" oor:op="fuse"><prop oor:name="Series" oor:op="fuse">'
+            f'<value>{series}</value></prop></node></oor:component-data>\n'
+            '</oor:data>\n')
+
+
+def libreoffice_splash(scale: int) -> QImage:
+    """LibreOffice's splash: onyx, the PR7-OS mark, the word; its progress bar (setup_look) runs along the bottom."""
+    w, h = LO_SPLASH[0] * scale, LO_SPLASH[1] * scale
+    img, p = new_image(w, h)
+    p.fillRect(QRectF(0, 0, w, h), colour("#0C0A0D"))
+    p.fillRect(QRectF(0, 0, w, 4 * scale), theme.family_gradient(0, 0, w, 0))
+    mark = mark_image(360 * scale, 70 * scale)
+    p.drawImage(int((w - mark.width()) / 2), int(80 * scale), mark)
+    word = text_image("OFFICE  ·  LIBREOFFICE", 14 * scale, "#8A8A92", 480 * scale, 30 * scale, 4 * scale)
+    p.drawImage(int((w - word.width()) / 2), int(172 * scale), word)
+    p.end()
+    return img
+
+
 def write(root: Path, rel: str, content: str | bytes | QImage) -> Path:
     path = root / rel
     path.parent.mkdir(parents=True, exist_ok=True)
@@ -577,6 +617,11 @@ def build(root: Path) -> list[Path]:
     out.append(write(root, "etc/sddm.conf.d/20-paragon-wayland.conf",
                      "[General]\nDisplayServer=wayland\nGreeterEnvironment=QT_WAYLAND_SHELL_INTEGRATION=layer-shell\n\n"
                      "[Wayland]\nCompositorCommand=kwin_wayland --drm --no-lockscreen --no-global-shortcuts --locale1\n"))
+    # LibreOffice (installed for everyone by the system package): its system settings (documents start in Inter, not
+    # Bebas Neue, which has capitals only; charts in the family's colours) and the splash setup_look puts in place
+    out.append(write(root, "usr/lib/libreoffice/share/registry/paragon.xcd", libreoffice_settings()))
+    for name, scale in (("intro.png", 1), ("intro-highres.png", 2)):
+        out.append(write(root, f"{share}/paragon/libreoffice/{name}", libreoffice_splash(scale)))
     # boot splash (Plymouth)
     ply = f"{share}/plymouth/themes/paragon"
     for f in ("paragon.plymouth", "paragon.script"):

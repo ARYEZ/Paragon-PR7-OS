@@ -94,6 +94,12 @@ a live ISO with the Calamares installer. The owner writes Python; explain the wh
   after sddm, enabled by setup_system): no greeter (3 checks running) or desktop session within 90 s -> writes
   90-paragon-x11-fallback.conf (DisplayServer=x11; the marker) and restarts sddm, once. xserver-xorg-input-libinput stays
   a Depends for that fallback and for xrdp.
+- **LibreOffice** (0.13.5): the system package Depends on libreoffice-writer/-calc/-impress/-kf6/-style-breeze; the look
+  ships `usr/lib/libreoffice/share/registry/paragon.xcd` (assets.libreoffice_settings: Office.Writer/DefaultFont = Inter,
+  Office.Chart/DefaultColor/Series = LO_CHART; names from LibreOffice 25.2's officecfg schema) and the splash art;
+  setup_look.libreoffice_look diverts program/intro*.png and /etc/libreoffice/sofficerc (rebuilt from the original with
+  LO_PROGRESS), libreoffice_back undoes; the look's trigger watches /usr/lib/libreoffice/program and /etc/libreoffice.
+  CI: install_test runs tools/lo_check.py (python3-uno: LibreOffice's own configuration read back).
 - **The lock screen** is Plasma's shell package (org.kde.plasma.desktop/contents/lockscreen), not the global theme,
   and its QML unlocks the session: `pr7os/static/lockscreen.py` (run by hook 0200) only restyles it with anchored edits
   (ParagonClock instead of Breeze's Clock; the password field's / unlock key's backgrounds; UserDelegate's gradient

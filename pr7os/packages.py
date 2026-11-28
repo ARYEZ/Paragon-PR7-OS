@@ -121,6 +121,8 @@ esac
 interest-noawait /usr/share/plasma/desktoptheme/breeze-dark
 interest-noawait /usr/lib/x86_64-linux-gnu/qt6/qml/org/kde/breeze/components
 interest-noawait /usr/share/kglobalaccel
+interest-noawait /usr/lib/libreoffice/program
+interest-noawait /etc/libreoffice
 """,
     },
     "paragon-pr7os-apps": {
@@ -173,7 +175,7 @@ CONTROL = {
                              "Qt (PySide6, PyQt6) and the other Python packages the Paragon apps use."),
     "paragon-pr7os-system": ("all", "python3, paragon-pr7os-python, pkexec, avahi-daemon, libnss-mdns, cups, print-manager, unattended-upgrades, "
                                     "curl, wget, git, unzip, htop, ufw, plasma-firewall, flatpak, "
-                                    "plasma-discover-backend-flatpak, mesa-vulkan-drivers, gamemode, xdg-utils, timeshift, pciutils, mokutil, xrdp, xorgxrdp, kwin-x11, xserver-xorg-input-libinput",
+                                    "plasma-discover-backend-flatpak, mesa-vulkan-drivers, gamemode, xdg-utils, timeshift, pciutils, mokutil, xrdp, xorgxrdp, kwin-x11, xserver-xorg-input-libinput, libreoffice-writer, libreoffice-calc, libreoffice-impress, libreoffice-kf6, libreoffice-style-breeze",
                              "Paragon PR7-OS system",
                              "What PR7-OS adds to Debian's Plasma: names on the network (name.local), printing, Debian's\n"
                              " security fixes by themselves, command-line basics, the firewall, Flatpak with Flathub\n"

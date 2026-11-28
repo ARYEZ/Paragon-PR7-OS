@@ -81,6 +81,15 @@ if apt-cache policy steam-devices | grep -q 'Candidate: [0-9]'; then
 else
     echo "controllers: steam-devices not offered here (contrib off): skipped, as on such a PC"
 fi
+# LibreOffice, themed: installed, its splash and progress bar set aside for ours, and LibreOffice itself reporting
+# the settings paragon.xcd gives (documents in Inter, the family's chart colours); python3-uno for the check only
+for pkg in libreoffice-writer libreoffice-calc libreoffice-impress libreoffice-kf6; do
+    dpkg-query -W -f '${db:Status-Status}' "$pkg" | grep -qx installed || fail "$pkg isn't installed"
+done
+dpkg-divert --list /usr/lib/libreoffice/program/intro.png | grep -q paragon || fail "LibreOffice's splash wasn't replaced"
+grep -q '^ProgressFrameColor=28,28,32' /etc/libreoffice/sofficerc || fail "LibreOffice's progress bar isn't the family's"
+apt-get install -y -qq python3-uno > /dev/null
+python3 /work/tools/lo_check.py || fail "LibreOffice doesn't see PR7-OS's settings"
 # Steam's NVIDIA libraries: the service is on at every start (it does nothing here: no NVIDIA driver running)
 [ -L /etc/systemd/system/multi-user.target.wants/pr7os-remote-awake.service ] || fail "pr7os-remote-awake isn't enabled"
 [ -L /etc/systemd/system/multi-user.target.wants/pr7os-remote-desktop-firewall.service ] \

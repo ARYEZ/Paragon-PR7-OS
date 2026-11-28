@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.13.5
+
+- **LibreOffice for everyone, in the family look** (Writer, Calc, Impress): its KDE integration draws menus, toolbars,
+  dialogs and the sidebar with Plasma's style, so they take PR7-OS's colours and follow OBSIDIAN / AURORA; new
+  documents start in Inter (Bebas Neue has capitals only: no good for text); charts start in the family's colours
+  (LibreOffice's own include blue and green); a Paragon splash, and its progress bar in the family's orange on onyx.
+  Its settings are a system layer (paragon.xcd: your own choices in LibreOffice still win); its splash pictures and
+  sofficerc are set aside and come back if the look is removed. CI asks LibreOffice itself for the settings.
+- Next: a Paragon icon set for LibreOffice, its start page and the menu icons.
+
 ## 0.13.4
 
 - **Game controllers for Steam**: the system package recommends Debian's steam-devices, Valve's access rules that let
