@@ -1,6 +1,11 @@
 #!/bin/sh
 # Steam on PR7-OS comes from Flathub: its own 32-bit libraries and runtime, nothing added to Debian's system.
-# Installed: start it. Not yet: Discover opens on Steam's page (one INSTALL click).
+# Installed: start it (arguments go to Steam: -bigpicture for the TV). Not yet: Discover opens on Steam's page (one
+# INSTALL click), unless --if-installed (the Big Picture start-at-sign-in entry): then nothing happens.
+if [ "$1" = "--if-installed" ]; then
+    shift
+    flatpak info com.valvesoftware.Steam >/dev/null 2>&1 || exit 0
+fi
 if flatpak info com.valvesoftware.Steam >/dev/null 2>&1; then
     exec flatpak run com.valvesoftware.Steam "$@"
 fi

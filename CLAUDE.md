@@ -74,6 +74,11 @@ a live ISO with the Calamares installer. The owner writes Python; explain the wh
   the card's TURN ON first stops KRdp for the account (`krdp_units` found by name, `krdp_off_commands`); one account
   can't run two Plasma sessions, so the card says sign out first. Boot test: TURN ON, then FreeRDP on the runner through
   QEMU's hostfwd 13389 logs in as a test user `rdptest` and kwin_x11 + plasmashell must run for it.
+- **Remote account / controllers** (0.13.4): remote helper word `account` makes `<PKEXEC_UID's user>-remote`
+  (useradd, chpasswd from stdin; never sudo); Welcome's REMOTE ACCOUNT asks twice (`ask_password`, tests answer) and
+  writes the password to the helper's stdin (`_run(stdin=)`). `packages.RECOMMENDS` (system: steam-devices, contrib);
+  STEAM card's BIG PICTURE AT SIGN-IN = ~/.config/autostart/paragon-steam-bigpicture.desktop running `pr7os-steam
+  --if-installed -bigpicture`.
 - **Remote desktop signed out / awake** (0.11.1): TURN ON runs `welcome.network_for_everyone` in the session (nmcli:
   active Wi-Fi / Ethernet -> connection.permissions "", an agent-owned Wi-Fi psk read with -s and stored with
   psk-flags 0); `static/system/pr7os-remote-awake` (+ .service, enabled by setup_system) holds `systemd-inhibit

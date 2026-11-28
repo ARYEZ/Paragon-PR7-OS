@@ -138,3 +138,8 @@ def test_the_updater_installs_every_package_that_is_built():
     spec.loader.exec_module(u)
     manifest = {"packages": [{"name": name, "version": "9"} for name in packages.CONTROL]}
     assert sorted(p["name"] for p in u.pending(manifest, {})) == sorted(packages.CONTROL)
+
+
+def test_the_system_package_recommends_controller_rules(tmp_path):
+    from pr7os import packages
+    assert packages.RECOMMENDS["paragon-pr7os-system"] == "steam-devices"

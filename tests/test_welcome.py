@@ -248,3 +248,71 @@ def test_turn_on_removes_krdps_autostart_entries(welcome, monkeypatch):
     cmds = mod.krdp_off_commands([])
     assert ["rm", "-f", str(auto / "org.kde.krdpserver.desktop")] in cmds
     assert not any("other.desktop" in " ".join(c) for c in cmds)
+
+
+def test_big_picture_at_sign_in(welcome):
+    mod, w, tmp = welcome
+    entry = tmp / "config/autostart/paragon-steam-bigpicture.desktop"
+    assert not w.bigpicture.isChecked() and not entry.exists()
+    w.bigpicture.setChecked(True)
+    assert "Exec=pr7os-steam --if-installed -bigpicture" in entry.read_text()
+    w.bigpicture.setChecked(False)
+    assert not entry.exists()
+
+
+def test_pr7os_steam_if_installed(tmp_path):
+    """Big Picture at sign-in does nothing when Steam isn't installed (no Discover at every sign-in)."""
+    log = tmp_path / "log"
+    for name, body in (("flatpak", f'echo "flatpak $*" >> "{log}"; [ "$1" = info ] && exit 1; exit 0'),
+                       ("xdg-open", f'echo "xdg-open $*" >> "{log}"')):
+        f = tmp_path / name
+        f.write_text("#!/bin/sh\n" + body + "\n")
+        f.chmod(0o755)
+    env = dict(os.environ, PATH=f"{tmp_path}{os.pathsep}{os.environ['PATH']}")
+    script = str(Path(__file__).resolve().parents[1] / "pr7os/static/system/pr7os-steam")
+    log.write_text("")
+    assert subprocess.run(["sh", script, "--if-installed", "-bigpicture"], env=env).returncode == 0
+    assert "xdg-open" not in log.read_text()
+    subprocess.run(["sh", script], env=env)
+    assert "xdg-open appstream://com.valvesoftware.Steam" in log.read_text()
+
+
+def test_the_remote_account(tmp_path):
+    """The real helper with useradd / chpasswd stand-ins: <you>-remote made once, its password from stdin only."""
+    import pwd
+    log = tmp_path / "log"
+    for name, body in (("useradd", f'echo "useradd $*" >> "{log}"'),
+                       ("chpasswd", f'echo "chpasswd $(cat)" >> "{log}"')):
+        f = tmp_path / name
+        f.write_text("#!/bin/sh\n" + body + "\n")
+        f.chmod(0o755)
+    me = pwd.getpwuid(os.getuid()).pw_name
+    env = dict(os.environ, PATH=f"{tmp_path}{os.pathsep}{os.environ['PATH']}", PR7OS_APT="apt-get",
+               PKEXEC_UID=str(os.getuid()))
+    helper = str(WELCOME / "pr7os-remote-helper")
+    done = subprocess.run([sys.executable, helper, "account"], env=env, input="s3cret pw\n", capture_output=True,
+                          text=True)
+    assert done.returncode == 0 and done.stdout.splitlines()[-1] == f"DONE account {me}-remote"
+    calls = log.read_text()
+    assert f"--comment Remote desktop ({me}) {me}-remote" in calls
+    assert f"chpasswd {me}-remote:s3cret pw" in calls
+    assert "s3cret" not in " ".join(done.args)                      # never on a command line
+    short = subprocess.run([sys.executable, helper, "account"], env=env, input="x\n", capture_output=True, text=True)
+    assert short.returncode == 1
+    nobody = subprocess.run([sys.executable, helper, "account"], env={**env, "PKEXEC_UID": ""}, input="s3cret pw\n",
+                            capture_output=True, text=True)
+    assert nobody.returncode == 1                                    # who asked must be known
+
+
+def test_remote_account_key(welcome, monkeypatch):
+    mod, w, tmp = welcome
+    answers = iter(["pw1", "pw2"])
+    w.ask_password = lambda prompt: next(answers)
+    w.account_key.click()
+    assert "weren't the same" in w.remote_text.text()
+    answers = iter(["s3cret pw", "s3cret pw"])
+    w.ask_password = lambda prompt: next(answers)
+    sent = []
+    monkeypatch.setattr(w, "_run", lambda cmd, var, word, text, done, stdin="": sent.append((word, stdin)))
+    w.account_key.click()
+    assert sent == [("account", "s3cret pw\n")]

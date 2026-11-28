@@ -184,6 +184,11 @@ CONTROL = {
 }
 
 
+RECOMMENDS = {   # installed when Debian offers them (contrib may be off: then they're left out, nothing breaks)
+    "paragon-pr7os-system": "steam-devices",    # game controllers for Steam (Valve's udev rules; Flatpak Steam can't add them)
+}
+
+
 def build_deb(name: str, version: str, files: dict[str, Path], out: Path) -> Path:
     """One package: `files` maps the path in the system to its source (symlinks kept)."""
     arch, depends, short, long = CONTROL[name]
@@ -203,7 +208,9 @@ def build_deb(name: str, version: str, files: dict[str, Path], out: Path) -> Pat
         size_kb = sum(f.stat().st_size for f in tree.rglob("*") if f.is_file() and not f.is_symlink()) // 1024 + 1
         (debian / "control").write_text(
             f"Package: {name}\nVersion: {version}\nArchitecture: {arch}\nMaintainer: {MAINTAINER}\n"
-            f"Installed-Size: {size_kb}\nDepends: {depends}\nSection: misc\nPriority: optional\n"
+            f"Installed-Size: {size_kb}\nDepends: {depends}\n"
+            + (f"Recommends: {RECOMMENDS[name]}\n" if name in RECOMMENDS else "")
+            + "Section: misc\nPriority: optional\n"
             f"Homepage: {HOMEPAGE}\nDescription: {short}\n {long}\n", encoding="utf-8")
         conffiles = sorted("/" + rel for rel in files if rel.startswith("etc/"))
         if conffiles:                           # changes made there survive updates (dpkg asks, or keeps them)

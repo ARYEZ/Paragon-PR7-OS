@@ -6,11 +6,15 @@
                                 password and gets a Plasma session of its own (X11)
     pr7os-remote-helper off     stopped, and not started at boot (the packages stay)
     pr7os-remote-helper state   "on" or "off" (no root needed)
+    pr7os-remote-helper account <you>-remote, an account of its own for remote desktop (you stay signed in at the PC:
+                                one account can't run two desktops); its password is read from standard input (never
+                                an argument, which any program could read); no administrator rights. Again = new password
 
 Why xrdp and not Plasma's KRdp: KRdp's H.264 stream was refused by both of Microsoft's clients (Remote Desktop
 Connection: protocol error 0xd06; Windows App: "Invalid packet format"), at 4K and at 1080p. The firewall already
 lets port 3389 in from home networks only (PR7-OS's setup). Prints STEP / DONE / ERROR lines for the window."""
 import os
+import pwd
 import re
 import subprocess
 import sys
@@ -40,6 +44,45 @@ def port_holder() -> str:
     return m.group(1) if m else ""
 
 
+def remote_name() -> str:
+    """The account for remote desktop: the asking user's name (pkexec says who) + "-remote"."""
+    uid = int(os.environ.get("PKEXEC_UID", "-1"))
+    try:
+        user = pwd.getpwuid(uid).pw_name
+    except (KeyError, ValueError):
+        return ""
+    return f"{user}-remote"[:32] if re.fullmatch(r"[a-z_][a-z0-9_-]*", user) else ""
+
+
+def account() -> int:
+    name = remote_name()
+    if not name:
+        say("ERROR who asked isn't known (start it with pkexec from your account)")
+        return 1
+    password = sys.stdin.readline().rstrip("\n")
+    if len(password) < 4:
+        say("ERROR the password is missing or too short")
+        return 1
+    try:
+        pwd.getpwnam(name)
+        exists = True
+    except KeyError:
+        exists = False
+    if not exists:
+        say(f"STEP Making the account {name}")
+        owner = name[:-len("-remote")]
+        if subprocess.run(["useradd", "--create-home", "--shell", "/bin/bash", "--comment",
+                           f"Remote desktop ({owner})", name]).returncode:
+            say(f"ERROR the account {name} couldn't be made")
+            return 1
+    say("STEP Setting its password")
+    if subprocess.run(["chpasswd"], input=f"{name}:{password}\n", text=True).returncode:
+        say("ERROR the password couldn't be set")
+        return 1
+    say(f"DONE account {name}")
+    return 0
+
+
 def state() -> str:
     done = subprocess.run([SYSTEMCTL, "is-active", "xrdp"], capture_output=True, text=True)
     return "on" if done.stdout.strip() == "active" else "off"
@@ -50,12 +93,14 @@ def main(argv: list[str]) -> int:
     if word == "state":
         say(state())
         return 0
-    if word not in ("on", "off"):
-        say("ERROR say on, off or state")
+    if word not in ("on", "off", "account"):
+        say("ERROR say on, off, state or account")
         return 2
     if os.geteuid() != 0 and not os.environ.get("PR7OS_APT"):
         say("ERROR this needs administrator rights (start it with pkexec)")
         return 1
+    if word == "account":
+        return account()
     env = dict(os.environ, DEBIAN_FRONTEND="noninteractive")
     if word == "on":
         missing = [p for p in PACKAGES if not installed(p)]

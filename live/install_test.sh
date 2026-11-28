@@ -74,6 +74,13 @@ grep -q '^DisplayServer=wayland' /etc/sddm.conf.d/20-paragon-wayland.conf || fai
 command -v kwin_wayland >/dev/null || fail "kwin_wayland (the login screen's compositor) isn't there"
 [ -L /etc/systemd/system/graphical.target.wants/pr7os-greeter-check.service ] || fail "pr7os-greeter-check isn't enabled"
 echo "login screen: Wayland (KWin), fallback check on"
+# game controllers for Steam: Recommends, so installed when Debian offers steam-devices (contrib), skipped if not
+if apt-cache policy steam-devices | grep -q 'Candidate: [0-9]'; then
+    dpkg-query -W -f '${db:Status-Status}' steam-devices 2>/dev/null | grep -qx installed || fail "steam-devices is offered but wasn't installed"
+    echo "controllers: steam-devices installed"
+else
+    echo "controllers: steam-devices not offered here (contrib off): skipped, as on such a PC"
+fi
 # Steam's NVIDIA libraries: the service is on at every start (it does nothing here: no NVIDIA driver running)
 [ -L /etc/systemd/system/multi-user.target.wants/pr7os-remote-awake.service ] || fail "pr7os-remote-awake isn't enabled"
 [ -L /etc/systemd/system/multi-user.target.wants/pr7os-remote-desktop-firewall.service ] \

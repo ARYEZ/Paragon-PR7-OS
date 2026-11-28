@@ -1,5 +1,16 @@
 # Changelog
 
+## 0.13.4
+
+- **Game controllers for Steam**: the system package recommends Debian's steam-devices, Valve's access rules that let
+  Steam (from Flathub, which can't add them itself) see Xbox, PlayStation and Steam controllers. Installed where
+  Debian's contrib area is on (DRIVERS turns it on), skipped where it isn't.
+- **Steam Big Picture at sign-in**: a switch on Welcome's STEAM card; Steam starts in its TV and controller mode when
+  you sign in (nothing happens if Steam isn't installed: no Discover at every sign-in).
+- **Remote desktop while signed in at the PC**: REMOTE DESKTOP's new REMOTE ACCOUNT key makes `<you>-remote`, an account
+  of its own for Windows (Plasma can't run one account twice; two accounts run side by side). Its password goes to the
+  helper through a pipe, never on a command line; it gets no administrator rights. Pressing it again sets a new password.
+
 ## 0.13.3
 
 - **KRdp can't take remote desktop's port back**: after a restart, KRdp (Plasma's own remote desktop, which Windows

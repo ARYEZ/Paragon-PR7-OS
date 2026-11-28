@@ -11,7 +11,8 @@
                 Windows refused) is stopped for this account first; the firewall lets home networks in
     DRIVERS     pr7os-drivers-helper: firmware for any PC, the NVIDIA driver for an NVIDIA card (and Secure Boot's key)
     PRINTERS    Plasma's printer settings
-    STEAM       pr7os-steam (Discover on Steam's Flathub page, or Steam itself)
+    STEAM       pr7os-steam (Discover on Steam's Flathub page, or Steam itself); BIG PICTURE AT SIGN-IN: Steam's TV
+                mode at sign-in (~/.config/autostart/paragon-steam-bigpicture.desktop; nothing if Steam isn't there)
     BACKUPS     PR7-BK's ready-made home backup (`pr7-bk --new-home-backup`: home, daily 03:00, caches out)
     UPDATES     PR7-OS Update
 
@@ -30,8 +31,8 @@ import subprocess
 import sys
 
 from PySide6.QtCore import QProcess, Qt, QTimer
-from PySide6.QtWidgets import (QApplication, QCheckBox, QFrame, QGridLayout, QHBoxLayout, QLabel, QPushButton,
-                               QVBoxLayout, QWidget)
+from PySide6.QtWidgets import (QApplication, QCheckBox, QFrame, QGridLayout, QHBoxLayout, QInputDialog, QLabel,
+                               QLineEdit, QPushButton, QVBoxLayout, QWidget)
 
 GRADIENT = "qlineargradient(x1:0, y1:0, x2:1, y2:0, stop:0 #FF0743, stop:0.5 #FA3632, stop:1 #F2781E)"
 STYLE = f"""
@@ -236,6 +237,30 @@ def remote_view(running: bool, host: str, address: str) -> str:
             "Sign out here first: one account can't run two desktops at once.")
 
 
+def bigpicture_file() -> str:
+    return os.path.join(config_home(), "autostart", "paragon-steam-bigpicture.desktop")
+
+
+def bigpicture_on() -> bool:
+    return os.path.exists(bigpicture_file())
+
+
+def set_bigpicture(on: bool) -> None:
+    """Steam in Big Picture (its TV and controller mode) at sign-in, or not. An autostart entry of this account's."""
+    path = bigpicture_file()
+    if not on:
+        try:
+            os.remove(path)
+        except FileNotFoundError:
+            pass
+        return
+    os.makedirs(os.path.dirname(path), exist_ok=True)
+    with open(path, "w", encoding="utf-8") as fh:
+        fh.write("[Desktop Entry]\nType=Application\nName=Steam Big Picture\n"
+                 "Comment=Steam's TV mode at sign-in (Paragon Welcome)\n"
+                 "Exec=pr7os-steam --if-installed -bigpicture\nX-KDE-autostart-phase=2\n")
+
+
 def drivers_helper() -> list[str]:
     if os.environ.get("PR7OS_DRIVERS_HELPER"):
         return shlex.split(os.environ["PR7OS_DRIVERS_HELPER"])
@@ -295,6 +320,7 @@ class Window(QWidget):
         self.setStyleSheet(style())
         self.configure = lambda args: subprocess.run(args, capture_output=True)   # tests record instead
         self.nm = subprocess.run                                     # nmcli (network_for_everyone); tests stand in
+        self.ask_password = self._ask_password                       # tests answer instead
         self.setAttribute(Qt.WidgetAttribute.WA_DeleteOnClose)        # PR7-OS's updater window's lesson
         self.resize(720, 640)
         lay = QVBoxLayout(self)
@@ -357,6 +383,9 @@ class Window(QWidget):
         self.remote_key = QPushButton("")
         self.remote_key.clicked.connect(self.toggle_remote)
         row.addWidget(self.remote_key)
+        self.account_key = QPushButton("REMOTE ACCOUNT")
+        self.account_key.clicked.connect(self.remote_account)
+        row.addWidget(self.account_key)
         lay.addWidget(box)
         self.remote = remote_state()
         self.show_remote()
@@ -369,10 +398,19 @@ class Window(QWidget):
         self.mok = ""
         self.show_drivers()
 
+        box, row, _ = card("STEAM", "Steam from Flathub, with its own libraries; controllers work with it.")
+        self.bigpicture = QCheckBox("BIG PICTURE AT SIGN-IN")
+        self.bigpicture.setChecked(bigpicture_on())
+        self.bigpicture.toggled.connect(set_bigpicture)
+        row.addWidget(self.bigpicture)
+        b = QPushButton("GET STEAM")
+        b.clicked.connect(lambda: self.start(["pr7os-steam"]))
+        row.addWidget(b)
+        lay.addWidget(box)
+
         for label, text, key, command in (
                 ("PRINTERS", "Network printers are found by themselves; add one here.", "ADD A PRINTER",
                  ["systemsettings", "kcm_printer_manager"]),
-                ("STEAM", "Steam from Flathub, with its own libraries.", "GET STEAM", ["pr7os-steam"]),
                 ("BACKUPS", "Your home folder every night at 03:00, to a drive you choose (PR7-BK).",
                  "BACK UP TO A DRIVE", ["pr7-bk", "--new-home-backup"]),
                 ("UPDATES", "PR7-OS checks once a day; look now, or go back to the release before.", "CHECK FOR UPDATES",
@@ -435,7 +473,36 @@ class Window(QWidget):
         self.ssh_text.setText("Your password lets PR7-OS change this.")
         self._run(helper(), "PR7OS_SSH_HELPER", word, self.ssh_text, self._ssh_done)
 
-    def _run(self, cmd: list[str], test_var: str, word: str, text: QLabel, done) -> None:
+    def _ask_password(self, prompt: str) -> str | None:
+        text, ok = QInputDialog.getText(self, "REMOTE ACCOUNT", prompt, QLineEdit.EchoMode.Password)
+        return text if ok else None
+
+    def remote_account(self) -> None:
+        """An account of its own for remote desktop (<you>-remote), so the PC can stay signed in."""
+        name = f"{os.environ.get('USER') or 'you'}-remote"
+        first = self.ask_password(f"A password for {name} (what you'll type in Windows):")
+        if not first:
+            return
+        if self.ask_password("The same password again:") != first:
+            self.show_remote("The two passwords weren't the same: nothing was changed.")
+            return
+        self.account_key.setEnabled(False)
+        self.remote_text.setText("Your password lets PR7-OS make the account.")
+        self._run(remote_helper(), "PR7OS_REMOTE_HELPER", "account", self.remote_text, self._account_done,
+                  stdin=first + "\n")
+
+    def _account_done(self, code: int) -> None:
+        self._read()
+        self.account_key.setEnabled(True)
+        if code in (126, 127):
+            self.show_remote("Nothing was changed (no password given).")
+        elif code == 0:
+            name = self.last_line.split()[-1] if self.last_line.startswith("DONE") else "the remote account"
+            self.show_remote(f"In Windows, sign in as {name}: you can stay signed in here.")
+        else:
+            self.show_remote(self.last_line.partition(" ")[2] or "The account wasn't made.")
+
+    def _run(self, cmd: list[str], test_var: str, word: str, text: QLabel, done, stdin: str = "") -> None:
         """A root helper through pkexec (straight in tests); its STEP / ERROR lines go to the card's text."""
         cmd = cmd if os.environ.get(test_var) else ["pkexec"] + cmd
         self.proc_text = text
@@ -445,6 +512,10 @@ class Window(QWidget):
         self.proc.readyReadStandardOutput.connect(self._read)
         self.proc.finished.connect(lambda code, _s=None: done(code))
         self.proc.start(cmd[0], cmd[1:] + [word])
+        if stdin:                                    # a password: through the pipe, never on a command line
+            self.proc.waitForStarted(10000)
+            self.proc.write(stdin.encode())
+            self.proc.closeWriteChannel()
         if self.sync:
             self.proc.waitForFinished(1800000)
 
