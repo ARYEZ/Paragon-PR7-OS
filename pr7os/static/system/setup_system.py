@@ -100,24 +100,31 @@ def flathub() -> str:
     return "added" if done.returncode == 0 else f"not added yet ({done.stderr.strip()[:200]})"
 
 
-def gl_service() -> str:
-    """pr7os-flatpak-gl.service on at every start (it does nothing without the NVIDIA driver)."""
+SERVICES = ["pr7os-flatpak-gl.service", "pr7os-remote-desktop-firewall.service"]
+
+
+def services() -> str:
+    """At every start: Flatpak's NVIDIA libraries (nothing without the driver), and the remote desktop rules until
+    they're in (a build chroot or a container may not change the kernel's firewall; the running PC can)."""
     systemctl = tool("PR7OS_SYSTEMCTL", "systemctl")
     if not systemctl:
         return "systemctl isn't there"
-    done = subprocess.run([systemctl, "enable", "pr7os-flatpak-gl.service"], stdout=subprocess.DEVNULL,
-                          stderr=subprocess.DEVNULL)
+    done = subprocess.run([systemctl, "enable", *SERVICES], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
     return "on at every start" if done.returncode == 0 else "not switched on (tried again on the next update)"
 
 
 def main(argv: list[str]) -> int:
+    if argv == ["remote-desktop"]:                # pr7os-remote-desktop-firewall.service, at start-up
+        said = remote_desktop()
+        print(f"PR7-OS remote desktop: {said}")
+        return 0 if said in ("allowed from home networks", "left as you set it") else 1
     if not argv or argv[0] != "configure":
         print(__doc__)
         return 2
     print(f"PR7-OS firewall: {firewall()}")
     print(f"PR7-OS remote desktop: {remote_desktop()}")
     print(f"PR7-OS Flathub: {flathub()}")
-    print(f"PR7-OS Flatpak NVIDIA libraries: {gl_service()}")
+    print(f"PR7-OS start-up services: {services()}")
     return 0                                    # never fail the package: each step is retried on the next update
 
 

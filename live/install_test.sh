@@ -63,6 +63,8 @@ else
     fail "the remote desktop firewall rule wasn't added"
 fi
 # Steam's NVIDIA libraries: the service is on at every start (it does nothing here: no NVIDIA driver running)
+[ -L /etc/systemd/system/multi-user.target.wants/pr7os-remote-desktop-firewall.service ] \
+    || fail "pr7os-remote-desktop-firewall isn't enabled"
 systemctl is-enabled pr7os-flatpak-gl.service 2>/dev/null | grep -qx enabled \
     || [ -L /etc/systemd/system/multi-user.target.wants/pr7os-flatpak-gl.service ] || fail "pr7os-flatpak-gl isn't enabled"
 /usr/libexec/paragon/pr7os-flatpak-gl | grep -q "no NVIDIA driver running" || fail "pr7os-flatpak-gl didn't run"

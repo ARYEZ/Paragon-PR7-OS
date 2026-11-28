@@ -260,7 +260,7 @@ def main(iso: str, out_dir: str) -> int:
     for f in ("vmlinuz", "initrd.img"):
         subprocess.run(["xorriso", "-osirrox", "on", "-indev", iso, "-extract", f"/live/{f}", str(work / f)],
                        check=True, capture_output=True)
-    append = ("boot=live components quiet splash loglevel=3 username=paragon user-fullname=Paragon hostname=pr7os locales=en_US.UTF-8 "
+    append = ("boot=live components quiet splash loglevel=3 plymouth.use-simpledrm username=paragon user-fullname=Paragon hostname=pr7os locales=en_US.UTF-8 "
               "keyboard-layouts=us live-config.noautologin console=ttyS0,115200 console=tty0 paragon.asktest")
     # UEFI, as on a real PC: its framebuffer is there from the start (simpledrm), so Plymouth draws the unlock
     # question in the theme (under BIOS it falls back to text until the graphics driver loads); QEMU's standard
@@ -465,6 +465,9 @@ def main(iso: str, out_dir: str) -> int:
         rules = m.guest("/usr/sbin/ufw", ["status"])
         rdp_rules = [r for r in rules.splitlines() if r.startswith("3389")]
         remote_ok = "kcm_krdpserver" in kcm and len(rdp_rules) == 3 and all("Anywhere" not in r for r in rdp_rules)
+        if not remote_ok:
+            (out / "remote_desktop.txt").write_text(rules + "\n" + m.guest("/bin/sh", ["-c",
+                "journalctl -b --no-pager -o cat -u pr7os-remote-desktop-firewall; ls -la /var/lib/paragon"]))
         result.append(f"Welcome REMOTE DESKTOP: {'settings opened, port 3389 home networks only' if remote_ok else 'NOT RIGHT (' + kcm.strip()[:60] + ' / ' + ' | '.join(rdp_rules)[:120] + ')'}")
         # DRIVERS: the helper reads this machine's graphics card (QEMU's) through lspci
         drivers = m.guest("/usr/libexec/paragon/pr7os-drivers-helper", ["state"])

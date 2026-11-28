@@ -597,7 +597,7 @@ def build(root: Path) -> list[Path]:
     out.append(write(root, "etc/default/grub.d/paragon.cfg",
                      'GRUB_DISTRIBUTOR="Paragon PR7-OS"\nGRUB_THEME="/usr/share/grub/themes/paragon/theme.txt"\n'
                      'GRUB_GFXMODE="1920x1080,auto"\nGRUB_TIMEOUT=5\n'
-                     'GRUB_CMDLINE_LINUX_DEFAULT="quiet splash loglevel=3"\n'))
+                     'GRUB_CMDLINE_LINUX_DEFAULT="quiet splash loglevel=3 plymouth.use-simpledrm"\n'))
     # what the look package does once installed (its postinst; dpkg triggers run it again on Plasma's updates)
     out.append(write(root, f"{share}/paragon/setup_look.py", (STATIC / "setup_look.py").read_text(encoding="utf-8")))
     # one finish for the whole desktop: the apps' OBSIDIAN / AURORA and Plasma's global theme kept together

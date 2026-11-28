@@ -1,5 +1,17 @@
 # Changelog
 
+## 0.8.0
+
+A new ISO (0.7.0's boot test found two more things, now fixed; everything else it checked passed: SSH from Welcome,
+sleep and wake with the lock screen, Print, PR7-IS and the apps after waking):
+- **The encrypted disk's question in the theme**: Plymouth ignores the firmware's framebuffer (simpledrm) unless the
+  kernel line says `plymouth.use-simpledrm`, and waits for a real graphics driver, which isn't in the initramfs
+  (NVIDIA's included): so it asked in plain text. PR7-OS's kernel line (installed systems' GRUB, the ISO's menu) now
+  has it: the splash, and the question with its dots, from the first moment.
+- **Remote desktop's firewall rules at start-up**: built into the ISO, only the first of the three home-network rules
+  went in. pr7os-remote-desktop-firewall.service adds them at start-up on the running system, until all three are in
+  (then never again); ufw's own message goes to its log.
+
 ## 0.7.1
 
 - **pr7os-update over SSH**: with no screen (an SSH session) it no longer tries to open its window (Qt aborted: "could

@@ -51,6 +51,7 @@ SYSTEM_FILES = {    # the system package's own files -> source in pr7os/static/s
     "etc/apt/apt.conf.d/52paragon-auto-upgrades": "52paragon-auto-upgrades",
     "usr/libexec/paragon/pr7os-flatpak-gl": "pr7os-flatpak-gl",
     "usr/lib/systemd/system/pr7os-flatpak-gl.service": "pr7os-flatpak-gl.service",
+    "usr/lib/systemd/system/pr7os-remote-desktop-firewall.service": "pr7os-remote-desktop-firewall.service",
     # Paragon Welcome (pr7os/static/welcome): finish, keys, SSH, printers, Steam, updates
     "usr/bin/pr7os-welcome": "../welcome/pr7os-welcome",
     "usr/share/paragon/welcome/welcome.py": "../welcome/welcome.py",

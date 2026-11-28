@@ -189,4 +189,15 @@ def test_remote_desktop_from_home_networks_only_once(system):
 def test_the_flatpak_nvidia_service_is_switched_on(system):
     mod, root, log = system
     mod.main(["configure"])
-    assert "systemctl enable pr7os-flatpak-gl.service" in log.read_text().splitlines()
+    assert "systemctl enable pr7os-flatpak-gl.service pr7os-remote-desktop-firewall.service" in log.read_text().splitlines()
+
+
+def test_at_start_up_the_remote_desktop_rules_are_retried_until_in(system, tmp_path):
+    mod, root, log = system
+    bad = tmp_path / "ufw"
+    bad.write_text(f'#!/bin/sh\necho "ufw $*" >> "{log}"\ncase "$*" in *172.16*) echo "ERROR: initcaps" >&2; exit 1;; esac\n')
+    assert mod.main(["remote-desktop"]) == 1                         # the second network refused: no marker
+    assert not (root / "var/lib/paragon/remote-desktop-allowed").exists()
+    bad.write_text(f'#!/bin/sh\necho "ufw $*" >> "{log}"\n')
+    assert mod.main(["remote-desktop"]) == 0                         # the next start: all three, then never again
+    assert (root / "var/lib/paragon/remote-desktop-allowed").exists()

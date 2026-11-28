@@ -1,0 +1,11 @@
+[Unit]
+Description=Paragon PR7-OS: remote desktop (port 3389) from home networks only, once
+ConditionPathExists=!/var/lib/paragon/remote-desktop-allowed
+After=ufw.service
+
+[Service]
+Type=oneshot
+ExecStart=/usr/bin/python3 /usr/share/paragon/setup_system.py remote-desktop
+
+[Install]
+WantedBy=multi-user.target
