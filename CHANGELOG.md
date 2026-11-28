@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.11.0
+
+A new ISO with remote desktop through xrdp (0.10.1). Its boot test turns REMOTE DESKTOP on from Welcome (Plasma's
+password dialog), then a real RDP client (FreeRDP, on the test machine, through the virtual network: a home network to
+the firewall) logs in to it as a user of its own, and a Plasma session must start for that user.
+
 ## 0.10.1
 
 - **Remote desktop through xrdp**: Plasma's KRdp sent a video stream (H.264) that both of Microsoft's clients refused
